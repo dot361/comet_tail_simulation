@@ -108,6 +108,10 @@
       text-shadow: 0 0 5px black;
     }
 
+    #mobileSpeedBar{
+      display: none;
+    }
+
     #timelineWrapper {
       position: fixed;
       bottom: 0;
@@ -178,6 +182,39 @@
       #simTimeDisplay{
         top: calc(8px + var(--safe-top)) !important;
         font-size: 18px !important;
+      }
+
+      #speedControl{
+        display: none;
+      }
+
+      #mobileSpeedBar{
+        display: block;
+        position: fixed;
+        left: 10px;
+        right: 10px;
+        bottom: calc(150px + var(--safe-bottom));
+        z-index: 3001;
+        padding: 10px 12px;
+        background: rgba(10, 10, 16, 0.88);
+        border: 1px solid rgba(255,255,255,0.18);
+        border-radius: 14px;
+        backdrop-filter: blur(10px);
+        color: white;
+        font-family: sans-serif;
+        box-sizing: border-box;
+      }
+
+      #mobileSpeedBar label{
+        display: block;
+        margin-bottom: 6px;
+        font-size: 14px;
+      }
+
+      #velocitySliderMobile{
+        width: 100%;
+        margin: 0;
+        box-sizing: border-box;
       }
 
       #timelineWrapper{
@@ -402,6 +439,13 @@
     Time: --
   </div>
 
+  <div id="mobileSpeedBar">
+    <label for="velocitySliderMobile">
+      Speed: <span id="velocityValueMobile">1</span>
+    </label>
+    <input type="range" id="velocitySliderMobile" min="0" max="100" value="0" step="1">
+  </div>
+
   <div id="timelineWrapper">
     <div id="topRow">
       <div id="timelineLabel">Date: 2000-01-01</div>
@@ -480,8 +524,10 @@
     <label for="synchroneBetasInput">Synchrone betas input (0-1)</label>
     <input id="synchroneBetasInput" value="0.01,0.05,0.1,0.3,0.7" />
 
-    <label for="velocitySlider">Simulation speed: <span id="velocityValue">1</span></label>
-    <input type="range" id="velocitySlider" min="0" max="100" value="0" step="1">
+    <div id="speedControl">
+      <label for="velocitySlider">Simulation speed: <span id="velocityValue">1</span></label>
+      <input type="range" id="velocitySlider" min="0" max="100" value="0" step="1">
+    </div>
 
     <div id="orbitControls" style="
       position: absolute;
@@ -970,6 +1016,32 @@
       const actBoxDecay = document.getElementById("actBoxDecay");
       const particleCounter = document.getElementById("particleCounter");
       const fpsCounter = document.getElementById("fpsCounter");
+
+      const velocitySlider = document.getElementById("velocitySlider");
+      const velocityValue = document.getElementById("velocityValue");
+      const velocitySliderMobile = document.getElementById("velocitySliderMobile");
+      const velocityValueMobile = document.getElementById("velocityValueMobile");
+
+      function syncSpeedUI(value) {
+        if (velocitySlider) velocitySlider.value = value;
+        if (velocitySliderMobile) velocitySliderMobile.value = value;
+        if (velocityValue) velocityValue.textContent = value;
+        if (velocityValueMobile) velocityValueMobile.textContent = value;
+      }
+
+      if (velocitySlider && velocitySliderMobile) {
+        syncSpeedUI(velocitySlider.value);
+
+        velocitySliderMobile.addEventListener("input", () => {
+          velocitySlider.value = velocitySliderMobile.value;
+          syncSpeedUI(velocitySliderMobile.value);
+          velocitySlider.dispatchEvent(new Event("input", { bubbles: true }));
+        });
+
+        velocitySlider.addEventListener("input", () => {
+          syncSpeedUI(velocitySlider.value);
+        });
+      }
 
       function wrapSection(title, el) {
         const section = document.createElement("div");
