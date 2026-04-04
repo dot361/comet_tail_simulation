@@ -221,22 +221,9 @@
         box-sizing: border-box;
       }
 
-      /* DATE TIMELINE MOVED TO THE OLD FLOATING SPEED-BAR PLACE */
+      /* HIDE MAIN-SCREEN DATE CONTROL ON MOBILE */
       #timelineWrapper{
-        left: 10px;
-        right: 10px;
-        width: auto;
-        bottom: calc(150px + var(--safe-bottom));
-        z-index: 3001;
-        padding: 10px 12px;
-        background: rgba(10, 10, 16, 0.88);
-        border: 1px solid rgba(255,255,255,0.18);
-        border-radius: 14px;
-        backdrop-filter: blur(10px);
-      }
-
-      #timelineSlider{
-        width: 100%;
+        display: none;
       }
 
       #mobileMenuBar{
@@ -1033,6 +1020,7 @@
       const actBoxDecay = document.getElementById("actBoxDecay");
       const particleCounter = document.getElementById("particleCounter");
       const fpsCounter = document.getElementById("fpsCounter");
+      const timelineWrapper = document.getElementById("timelineWrapper");
 
       const velocitySlider = document.getElementById("velocitySlider");
       const velocityValue = document.getElementById("velocityValue");
@@ -1096,6 +1084,7 @@
       infoPanel.innerHTML = "";
 
       controlsPanel.appendChild(wrapSection("Simulation", uiOverlay));
+      controlsPanel.appendChild(wrapSection("Date", timelineWrapper));
 
       viewPanel.appendChild(wrapSection("Pause", pauseContainer));
       viewPanel.appendChild(wrapSection("Axis", axisControl));
@@ -1119,7 +1108,8 @@
         actBoxQ,
         actBoxDecay,
         particleCounter,
-        fpsCounter
+        fpsCounter,
+        timelineWrapper
       ].forEach(resetMovedStyles);
 
       axisControl.style.display = "flex";
