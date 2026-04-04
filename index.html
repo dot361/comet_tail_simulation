@@ -5,19 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Comet Simulation</title>
   <style>
-    #cometButtons button {
-  background-color: #444;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  padding: 6px 10px;
-  font-size: 13px;
-  cursor: pointer;
-}
+    :root{
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+    }
 
-#cometButtons button:hover {
-  background-color: #666;
-}
     html, body {
       margin: 0;
       padding: 0;
@@ -27,9 +21,11 @@
       background-color: black;
     }
 
-    #renderCanvas {
-      width: 100%;
-      height: 100%;
+    #renderCanvas{
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100dvh;
       display: block;
     }
 
@@ -44,6 +40,7 @@
       padding: 12px;
       border-radius: 8px;
       max-width: 300px;
+      box-sizing: border-box;
     }
 
     #uiOverlay label {
@@ -58,8 +55,8 @@
     #uiOverlay select {
       width: 100%;
       margin-bottom: 5px;
+      box-sizing: border-box;
     }
-
 
     button {
       margin-top: 10px;
@@ -90,215 +87,294 @@
       padding: 4px 8px;
     }
 
-:root{
-  --safe-top: env(safe-area-inset-top, 0px);
-  --safe-right: env(safe-area-inset-right, 0px);
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --safe-left: env(safe-area-inset-left, 0px);
-}
+    #homeScreen{
+      padding-top: calc(20px + var(--safe-top)) !important;
+      padding-left: calc(20px + var(--safe-left)) !important;
+      padding-right: calc(20px + var(--safe-right)) !important;
+      height: 100dvh !important;
+      box-sizing: border-box;
+    }
 
-#renderCanvas{
-  position: fixed;
-  inset: 0;
-  width: 100vw;
-  height: 100dvh;
-}
+    #simTimeDisplay{
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: white;
+      font-size: 28px;
+      font-weight: bold;
+      z-index: 1000;
+      font-family: sans-serif;
+      text-shadow: 0 0 5px black;
+    }
 
-#homeScreen{
-  padding-top: calc(20px + var(--safe-top)) !important;
-  padding-left: calc(20px + var(--safe-left)) !important;
-  padding-right: calc(20px + var(--safe-right)) !important;
-  height: 100dvh !important;
-}
+    #timelineWrapper {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 10px 20px;
+      font-family: sans-serif;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      box-sizing: border-box;
+    }
 
-@media (max-width: 900px){
-  html, body{
-    overflow: auto;
-    height: 100%;
-    background: #000;
-  }
+    #topRow {
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
+      gap: 15px;
+      padding-left: 10px;
+    }
 
-  #uiOverlay{
-    position: fixed;
-    top: calc(10px + var(--safe-top));
-    left: calc(10px + var(--safe-left));
-    right: calc(10px + var(--safe-right));
-    max-width: none;
-    max-height: min(55vh, calc(100dvh - 140px));
-    overflow: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
-  }
+    #timelineLabel {
+      font-weight: bold;
+      color: white;
+      font-size: 1.2em;
+    }
 
-  #betaCurvePanel{
-    position: fixed !important;
-    right: calc(10px + var(--safe-right));
-    left: calc(10px + var(--safe-left));
-    bottom: calc(80px + var(--safe-bottom));
-    top: auto;
-    width: auto;
-    max-width: 640px;
-    max-height: 38vh;
-    overflow: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
-  }
+    #timelineSlider {
+      width: 95%;
+      cursor: pointer;
+    }
 
-  #simTimeDisplay{
-    top: calc(10px + var(--safe-top)) !important;
-  }
-  #statusContainer{
-    top: calc(10px + var(--safe-top)) !important;
-    right: calc(10px + var(--safe-right)) !important;
-  }
-  #pauseContainer{
-    top: calc(48px + var(--safe-top)) !important;
-    right: calc(10px + var(--safe-right)) !important;
-  }
+    #uiOverlay input,
+    #uiOverlay select {
+      width: 100%;
+      box-sizing: border-box;
+    }
 
-  #axisControl{
-    right: calc(10px + var(--safe-right)) !important;
-    bottom: calc(260px + var(--safe-bottom)) !important;
-    top: auto !important;
-    background: rgba(0,0,0,0.3);
-    backdrop-filter: blur(4px);
-  }
-  #cometButtons{
-    right: calc(10px + var(--safe-right)) !important;
-    bottom: calc(200px + var(--safe-bottom)) !important;
-    top: auto !important;
-    background: rgba(0,0,0,0.3);
-    backdrop-filter: blur(4px);
-  }
+    #cometButtons button {
+      background-color: #444;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 6px 10px;
+      font-size: 13px;
+      cursor: pointer;
+    }
 
-  #fpsCounter,
-  #particleCounter,
-  #actBoxQ,
-  #actBoxDecay{
-    right: calc(10px + var(--safe-right)) !important;
-  }
-  #timelineWrapper{
-    padding-bottom: calc(10px + var(--safe-bottom));
-  }
+    #cometButtons button:hover {
+      background-color: #666;
+    }
 
-  #uiOverlay, #betaCurvePanel{ font-size: 0.95rem; }
-  #uiOverlay input, #uiOverlay select, #uiOverlay button{ font-size: 0.9rem; }
-}
+    #mobileMenuBar,
+    #mobileDrawer,
+    #mobileDrawerBackdrop {
+      display: none;
+    }
 
-@media (max-width: 480px){
-  .comet-buttons{ grid-template-columns: 1fr; }
-  #betaCurvePanel{ max-height: 34vh; }
-}
+    @media (max-width: 900px){
+      html, body{
+        overflow: hidden;
+        height: 100%;
+        background: #000;
+      }
 
+      #simTimeDisplay{
+        top: calc(8px + var(--safe-top)) !important;
+        font-size: 18px !important;
+      }
+
+      #timelineWrapper{
+        bottom: 0;
+        padding-bottom: calc(10px + var(--safe-bottom));
+      }
+
+      #mobileMenuBar{
+        display: flex;
+        position: fixed;
+        left: 10px;
+        right: 10px;
+        bottom: calc(84px + var(--safe-bottom));
+        z-index: 3000;
+        gap: 8px;
+        padding: 8px;
+        background: rgba(10, 10, 16, 0.88);
+        border: 1px solid rgba(255,255,255,0.18);
+        border-radius: 14px;
+        backdrop-filter: blur(10px);
+        box-sizing: border-box;
+      }
+
+      #mobileMenuBar button{
+        flex: 1;
+        margin: 0;
+        padding: 10px 8px;
+        font-size: 14px;
+        background: #1d3557;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        width: auto;
+      }
+
+      #mobileDrawerBackdrop{
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: 2998;
+        background: rgba(0,0,0,0.45);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.25s ease;
+      }
+
+      #mobileDrawerBackdrop.open{
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      #mobileDrawer{
+        display: block;
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 2999;
+        max-height: 78dvh;
+        background: rgba(8, 12, 18, 0.96);
+        border-top-left-radius: 18px;
+        border-top-right-radius: 18px;
+        border-top: 1px solid rgba(255,255,255,0.18);
+        transform: translateY(100%);
+        transition: transform 0.25s ease;
+        overflow: hidden;
+        backdrop-filter: blur(10px);
+      }
+
+      #mobileDrawer.open{
+        transform: translateY(0);
+      }
+
+      #mobileDrawerHandle{
+        width: 46px;
+        height: 5px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.35);
+        margin: 10px auto 8px auto;
+      }
+
+      #mobileDrawerHeader{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 14px 10px 14px;
+        color: white;
+        font-family: sans-serif;
+      }
+
+      #mobileDrawerHeader button{
+        width: auto;
+        margin: 0;
+        padding: 6px 10px;
+        font-size: 16px;
+        background: transparent;
+        border: 1px solid rgba(255,255,255,0.2);
+      }
+
+      .mobilePanel{
+        display: none;
+        overflow: auto;
+        max-height: calc(78dvh - 56px);
+        padding: 0 12px calc(18px + var(--safe-bottom)) 12px;
+        color: white;
+        font-family: sans-serif;
+        box-sizing: border-box;
+      }
+
+      .mobilePanel.active{
+        display: block;
+      }
+
+      .mobileSection{
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 12px;
+      }
+
+      .mobileSection h3{
+        margin: 0 0 10px 0;
+        font-size: 15px;
+      }
+
+      #betaCurveCanvas{
+        width: 100% !important;
+        max-width: 100%;
+        height: auto !important;
+      }
+    }
+
+    @media (max-width: 480px){
+      .comet-buttons{ grid-template-columns: 1fr; }
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body>
 
   <div id="homeScreen" style="
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background-color: #000814;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  z-index: 9999;
-  color: white;
-  font-family: Arial, sans-serif;
-">
-  <h1 style="font-size: 64px; margin: 0;">Comet Simulator</h1>
-  <button id="startBtn" style="
-    margin-top: 30px;
-    padding: 15px 40px;
-    font-size: 24px;
-    background-color: #1d3557;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: #000814;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
     color: white;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-  ">Click to start</button>
+    font-family: Arial, sans-serif;
+  ">
+    <h1 style="font-size: 64px; margin: 0;">Comet Simulator</h1>
+    <button id="startBtn" style="
+      margin-top: 30px;
+      padding: 15px 40px;
+      font-size: 24px;
+      background-color: #1d3557;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      width: auto;
+    ">Click to start</button>
 
-  <div id="loadingSpinner" style="
-    margin-top: 30px;
-    border: 6px solid #ccc;
-    border-top: 6px solid #1d3557;
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    animation: spin 1s linear infinite;
-    display: none;
-  "></div>
-</div>
-
-<canvas id="renderCanvas"></canvas>
-
-<div id="simTimeDisplay" style="
-  position: absolute;
-  top: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  color: white;
-  font-size: 28px;
-  font-weight: bold;
-  z-index: 1000;
-  font-family: sans-serif;
-  text-shadow: 0 0 5px black;
-">
-  Time: --
-  
-</div>
-
-<style>
-#timelineWrapper {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  background: rgba(0, 0, 0, 0.7);
-  padding: 10px 20px;
-  font-family: sans-serif;
-  z-index: 1000;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-#topRow {
-  display: flex;
-  justify-content: flex-start;
-  align-items: center;
-  gap: 15px;
-  padding-left: 10px;
-}
-
-#timelineLabel {
-  font-weight: bold;
-  color: white;
-  font-size: 1.2em;
-}
-
-#timelineSlider {
-  width: 95%;
-  cursor: pointer;
-}
-
-#uiOverlay input,
-#uiOverlay select {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-</style>
-
-<div id="timelineWrapper">
-  <div id="topRow">
-    <div id="timelineLabel">Date: 2000-01-01</div>
+    <div id="loadingSpinner" style="
+      margin-top: 30px;
+      border: 6px solid #ccc;
+      border-top: 6px solid #1d3557;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      display: none;
+    "></div>
   </div>
-  <input type="range" id="timelineSlider" min="-36525" max="36525" value="0" step="1" disabled />
-</div>
+
+  <canvas id="renderCanvas"></canvas>
+
+  <div id="simTimeDisplay">
+    Time: --
+  </div>
+
+  <div id="timelineWrapper">
+    <div id="topRow">
+      <div id="timelineLabel">Date: 2000-01-01</div>
+    </div>
+    <input type="range" id="timelineSlider" min="-36525" max="36525" value="0" step="1" disabled />
+  </div>
 
   <div id="uiOverlay">
 
@@ -327,405 +403,424 @@
       Activity exponent n (Q = k / r^n):
       <input id="activityExponentInput" type="number" step="0.1" min="0" max="6" value="2">
     </label>
+
     <label>
       Activity scale k (at 1 AU):
       <input id="activityScaleInput" type="number" step="0.1" min="0" value="1">
     </label>
 
-<div class="activity-field">
-  <label for="activityHalfLifeInput">Activity decay half-life (e-days):</label>
-  <input id="activityHalfLifeInput" type="number" step="10" min="1" value="1500">
-</div>
+    <div class="activity-field">
+      <label for="activityHalfLifeInput">Activity decay half-life (e-days):</label>
+      <input id="activityHalfLifeInput" type="number" step="10" min="1" value="1500">
+    </div>
 
-  <label for="particleCountInput">Particle Count (per sec):</label>
-  <input type="number" id="particleCountInput" step="1" min="1" max="3000" value="100" />
+    <label for="particleCountInput">Particle Count (per sec):</label>
+    <input type="number" id="particleCountInput" step="1" min="1" max="3000" value="100" />
 
-<label for="visModeSelect">Particle color:</label>
-<select id="visModeSelect">
-  <option value="none">None</option>
-  <option value="beta">β value</option>
-  <option value="age">Age</option>
-  <option value="dist">Distance from nucleus</option>
-  <option value="vrel">Relative velocity</option>
-</select>
+    <label for="visModeSelect">Particle color:</label>
+    <select id="visModeSelect">
+      <option value="none">None</option>
+      <option value="beta">β value</option>
+      <option value="age">Age</option>
+      <option value="dist">Distance from nucleus</option>
+      <option value="vrel">Relative velocity</option>
+    </select>
 
-<label for="camXYZInput">Camera locking position (x, y, z)</label>
-<input
-  type="text"
-  id="camXYZInput"
-  value="1, 1, 1"
-  placeholder="e.g. 1, 0, 0.2"
-/>
+    <label for="camXYZInput">Camera locking position (x, y, z)</label>
+    <input
+      type="text"
+      id="camXYZInput"
+      value="1, 1, 1"
+      placeholder="e.g. 1, 0, 0.2"
+    />
 
-<label for="camUnitSelect">Units for locking</label>
-<select id="camUnitSelect">
-  <option value="AU" selected>AU</option>
-  <option value="m">meters</option>
-  <option value="km">kilometers</option>
-</select>
+    <label for="camUnitSelect">Units for locking</label>
+    <select id="camUnitSelect">
+      <option value="AU" selected>AU</option>
+      <option value="m">meters</option>
+      <option value="km">kilometers</option>
+    </select>
 
-<label for="synchroneDaysInput">Synchrone days input (d)</label>
-<input id="synchroneDaysInput"  value="-120,-60,-30,-10" />
-<label for="synchroneBetasInput">Synchrone betas input (0-1)</label>
-<input id="synchroneBetasInput" value="0.01,0.05,0.1,0.3,0.7" />
+    <label for="synchroneDaysInput">Synchrone days input (d)</label>
+    <input id="synchroneDaysInput" value="-120,-60,-30,-10" />
 
-  <label for="velocitySlider">Simulation speed: <span id="velocityValue">1</span></label>
-  <input type="range" id="velocitySlider" min="0" max="100" value="0" step="1">
+    <label for="synchroneBetasInput">Synchrone betas input (0-1)</label>
+    <input id="synchroneBetasInput" value="0.01,0.05,0.1,0.3,0.7" />
 
-<div id="orbitControls" style="
-  position: absolute;
-  top: 650px;
-  right: 65px;
-  z-index: 15;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  font-family: sans-serif;
-">
-</div>
+    <label for="velocitySlider">Simulation speed: <span id="velocityValue">1</span></label>
+    <input type="range" id="velocitySlider" min="0" max="100" value="0" step="1">
 
-    <button style="
-    background: none;
-    border: 1.5px solid #ccc;
-    color: #eee;
-    padding: 6px 2px;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s ease, color 0.3s ease;
-  " id="generateSyndynesBtn">Generate syndynes</button>
+    <div id="orbitControls" style="
+      position: absolute;
+      top: 650px;
+      right: 65px;
+      z-index: 15;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-family: sans-serif;
+    "></div>
 
     <button style="
-    background: none;
-    border: 1.5px solid #ccc;
-    color: #eee;
-    padding: 6px 2px;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s ease, color 0.3s ease;
-  " id="generateSynchronesBtn">Generate synchrones</button>
-
-      <button style="
-    background: none;
-    border: 1.5px solid #ccc;
-    color: #eee;
-    padding: 6px 2px;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s ease, color 0.3s ease;
-  " id="exportSynSydCSVBtn">Export syn/synd CSV (RA/Dec)</button>
+      background: none;
+      border: 1.5px solid #ccc;
+      color: #eee;
+      padding: 6px 2px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    " id="generateSyndynesBtn">Generate syndynes</button>
 
     <button style="
-    background: none;
-    border: 1.5px solid #ccc;
-    color: #eee;
-    padding: 6px 2px;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s ease, color 0.3s ease;
-  " id="lockCamPosBtn">Lock camera position</button>
+      background: none;
+      border: 1.5px solid #ccc;
+      color: #eee;
+      padding: 6px 2px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    " id="generateSynchronesBtn">Generate synchrones</button>
 
-  <button style="
-    background: none;
-    border: 1.5px solid #ccc;
-    color: #eee;
-    padding: 6px 2px;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s ease, color 0.3s ease;
-  " id="lockEarthBtn">Lock camera to Earth</button>
+    <button style="
+      background: none;
+      border: 1.5px solid #ccc;
+      color: #eee;
+      padding: 6px 2px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    " id="exportSynSydCSVBtn">Export syn/synd CSV (RA/Dec)</button>
 
-  <button style="
-    background: none;
-    border: 1.5px solid #ccc;
-    color: #eee;
-    padding: 6px 2px;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s ease, color 0.3s ease;
-  " id="toggleGridBtn">Hide Grid</button>
+    <button style="
+      background: none;
+      border: 1.5px solid #ccc;
+      color: #eee;
+      padding: 6px 2px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    " id="lockCamPosBtn">Lock camera position</button>
 
-  <button style="
-    background: none;
-    border: 1.5px solid #ccc;
-    color: #eee;
-    padding: 6px 2px;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s ease, color 0.3s ease;
-  " id="toggleOrbitBtn">Toggle Orbit Visibility</button>
+    <button style="
+      background: none;
+      border: 1.5px solid #ccc;
+      color: #eee;
+      padding: 6px 2px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    " id="lockEarthBtn">Lock camera to Earth</button>
 
-  <button style="
-    background: none;
-    border: 1.5px solid #ccc;
-    color: #eee;
-    padding: 6px 12px;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s ease, color 0.3s ease;
-  " id="toggleFocusBtn">Focus on Comet</button>
+    <button style="
+      background: none;
+      border: 1.5px solid #ccc;
+      color: #eee;
+      padding: 6px 2px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    " id="toggleGridBtn">Hide Grid</button>
 
-  <button style="
-    background: none;
-    border: 1.5px solid #ccc;
-    color: #eee;
-    padding: 6px 12px;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s ease, color 0.3s ease;
-  " id="updateViewBtn" disabled>Update Position</button>
-</div>
+    <button style="
+      background: none;
+      border: 1.5px solid #ccc;
+      color: #eee;
+      padding: 6px 2px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    " id="toggleOrbitBtn">Toggle Orbit Visibility</button>
 
-<div id="statusContainer" style="
-  position: fixed;
-  top: 10px;
-  right: 25px;
-  z-index: 1001;
-  font-family: sans-serif;
-">
-  <div id="gpuStatus" style="
-    font-size:12px;
-    padding:4px 6px;
-    border-radius:4px;
-    background:#222;
-    color:#eee;
-    border:1px solid #555;
-    opacity:0.9;
-    display:inline-block;
-  ">GPU: —</div>
-</div>
+    <button style="
+      background: none;
+      border: 1.5px solid #ccc;
+      color: #eee;
+      padding: 6px 12px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    " id="toggleFocusBtn">Focus on Comet</button>
 
-<div id="pauseContainer" style="
-  position: fixed;
-  top: 110px;
-  right: 25px;
-  z-index: 1000;
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-family: sans-serif;
-">
-  <button id="pauseBtn" style="
-    background: none;
-    border: 1.5px solid #ccc;
-    color: #eee;
-    padding: 8px 16px;
-    font-size: 16px;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s ease, color 0.3s ease;
-  ">Pause</button>
-</div>
-
-<div id="axisControl" style="
-  position: fixed;
-  top: 170px;
-  right: 20px;
-  z-index: 15;
-  padding: 6px;
-  border-radius: 6px;
-  display: flex;
-  flex-direction: row;
-  gap: 10px;
-  font-family: sans-serif;
-  background: transparent;
-  width: max-content;
-">
-  <button style="
-    background: none;
-    border: 1.5px solid #ccc;
-    color: #eee;
-    padding: 6px 12px;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s ease, color 0.3s ease;
-  " onclick="setViewAxis('X')">X</button>
-
-  <button style="
-    background: none;
-    border: 1.5px solid #ccc;
-    color: #eee;
-    padding: 6px 12px;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s ease, color 0.3s ease;
-  " onclick="setViewAxis('Y')">Y</button>
-
-  <button style="
-    background: none;
-    border: 1.5px solid #ccc;
-    color: #eee;
-    padding: 6px 12px;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s ease, color 0.3s ease;
-  " onclick="setViewAxis('Z')">Z</button>
-</div>
-
-<div id="cometButtons" style="
-  position: fixed;
-  top: 220px;
-  right: 30px;
-  z-index: 15;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 8px;
-  border-radius: 6px;
-  font-family: sans-serif;
-  background: transparent;
-">
-  <button style="
-    background: none;
-    border: 1.5px solid #ccc;
-    color: #eee;
-    padding: 6px 12px;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s ease, color 0.3s ease;
-  " onclick="loadComet('67P')">67P</button>
-
-  <button style="
-    background: none;
-    border: 1.5px solid #ccc;
-    color: #eee;
-    padding: 6px 12px;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s ease, color 0.3s ease;
-  " onclick="loadComet('C2024E1')">C/2024 E1</button>
-
-  <button style="
-    background: none;
-    border: 1.5px solid #ccc;
-    color: #eee;
-    padding: 6px 12px;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s ease, color 0.3s ease;
-  " onclick="loadComet('133P')">133P</button>
-
-  <button style="
-    background: none;
-    border: 1.5px solid #ccc;
-    color: #eee;
-    padding: 6px 12px;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s ease, color 0.3s ease;
-  " onclick="loadComet('3I')">3I/ATLAS</button>
-</div>
-
-<div id="actBoxQ" style="
-  position: fixed;
-  bottom: 190px;   /* ~46px above particle counter */
-  right: 20px;
-  z-index: 1002;
-  font-family: monospace, sans-serif;
-  font-size: 14px;
-  color: #fff;
-  background: rgba(0,0,0,0.6);
-  padding: 4px 8px;
-  border-radius: 4px;
-  border: 1px solid #fff;
-  display: inline-block;
-  white-space: nowrap;
-">Q: --</div>
-
-<div id="actBoxDecay" style="
-  position: fixed;
-  bottom: 150px;
-  right: 20px;
-  z-index: 1002;
-  font-family: monospace, sans-serif;
-  font-size: 14px;
-  color: #fff;
-  background: rgba(0,0,0,0.6);
-  padding: 4px 8px;
-  border-radius: 4px;
-  border: 1px solid #fff;
-  display: inline-block;
-  white-space: nowrap;
-">decay: --</div>
-
-<div id="particleCounter" style="
-  position: fixed;
-  bottom: 110px;
-  right: 20px;
-  z-index: 1001;
-  font-family: monospace, sans-serif;
-  font-size: 14px;
-  color: #fff;
-  background: rgba(0,0,0,0.6);
-  padding: 4px 8px;
-  border-radius: 4px;
-  border: 1px solid #fff;
-">
-  Particles: --
-</div>
-
-<div id="fpsCounter" style="
-  position: fixed;
-  bottom: 70px;
-  right: 20px;
-  z-index: 1001;
-  font-family: monospace, sans-serif;
-  font-size: 14px;
-  color: #fff;
-  background: rgba(0,0,0,0.6);
-  padding: 4px 8px;
-  border-radius: 4px;
-  border: 1px solid #fff;
-">
-  FPS: --
-</div>
-
-<div id="betaCurvePanel" style="
-  position: fixed;
-  right: 20px;
-  top: 500px;
-  width: 340px;
-  z-index: 1010;
-  font-family: Inter, system-ui, sans-serif;
-  color: #e7f0ff;
-  background: linear-gradient(180deg, rgba(11, 14, 19, 0.85), rgba(12,16,22,0.85));
-  border: 1px solid rgba(218, 218, 218, 0.35);
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.06);
-  backdrop-filter: blur(6px);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 10px 12px 12px 12px;
-">
-<div style="display:flex; align-items:center; justify-content:space-between;">
-  <div style="font-size:16px; font-weight:600; letter-spacing:0.2px; opacity:.9;">
-    β Gradation Curve
+    <button style="
+      background: none;
+      border: 1.5px solid #ccc;
+      color: #eee;
+      padding: 6px 12px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    " id="updateViewBtn" disabled>Update Position</button>
   </div>
-  <div style="display:flex; gap:6px; align-items:center;">
+
+  <div id="statusContainer" style="
+    position: fixed;
+    top: 10px;
+    right: 25px;
+    z-index: 1001;
+    font-family: sans-serif;
+  ">
+    <div id="gpuStatus" style="
+      font-size:12px;
+      padding:4px 6px;
+      border-radius:4px;
+      background:#222;
+      color:#eee;
+      border:1px solid #555;
+      opacity:0.9;
+      display:inline-block;
+    ">GPU: —</div>
   </div>
-</div>
 
-  <div style="position:relative;">
-    <canvas id="betaCurveCanvas"
-      width="340" height="260"
-      style="width:340px;height:260px; background:#0a1016; border-radius:10px; border:1px solid rgba(218, 218, 218, 0.5);">
-    </canvas>
+  <div id="pauseContainer" style="
+    position: fixed;
+    top: 110px;
+    right: 25px;
+    z-index: 1000;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-family: sans-serif;
+  ">
+    <button id="pauseBtn" style="
+      background: none;
+      border: 1.5px solid #ccc;
+      color: #eee;
+      padding: 8px 16px;
+      font-size: 16px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    ">Pause</button>
+  </div>
 
-    <div id="betaCurveTip" style="
-      position:absolute; pointer-events:none; transform:translate(-50%,-120%);
-      background: rgba(12,18,26,0.9); color:#dff3ff; font-size:11px;
-      padding: 4px 6px; border-radius:6px; border:1px solid rgba(130,160,190,0.4);
-      box-shadow: 0 2px 10px rgba(0,0,0,0.4); display:none;">
-      β: 0.00 • w: 0.00
+  <div id="axisControl" style="
+    position: fixed;
+    top: 170px;
+    right: 20px;
+    z-index: 15;
+    padding: 6px;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    font-family: sans-serif;
+    background: transparent;
+    width: max-content;
+  ">
+    <button style="
+      background: none;
+      border: 1.5px solid #ccc;
+      color: #eee;
+      padding: 6px 12px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease, color 0.3s ease;
+      width: auto;
+    " onclick="setViewAxis('X')">X</button>
+
+    <button style="
+      background: none;
+      border: 1.5px solid #ccc;
+      color: #eee;
+      padding: 6px 12px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease, color 0.3s ease;
+      width: auto;
+    " onclick="setViewAxis('Y')">Y</button>
+
+    <button style="
+      background: none;
+      border: 1.5px solid #ccc;
+      color: #eee;
+      padding: 6px 12px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease, color 0.3s ease;
+      width: auto;
+    " onclick="setViewAxis('Z')">Z</button>
+  </div>
+
+  <div id="cometButtons" style="
+    position: fixed;
+    top: 220px;
+    right: 30px;
+    z-index: 15;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px;
+    border-radius: 6px;
+    font-family: sans-serif;
+    background: transparent;
+  ">
+    <button style="
+      background: none;
+      border: 1.5px solid #ccc;
+      color: #eee;
+      padding: 6px 12px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    " onclick="loadComet('67P')">67P</button>
+
+    <button style="
+      background: none;
+      border: 1.5px solid #ccc;
+      color: #eee;
+      padding: 6px 12px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    " onclick="loadComet('C2024E1')">C/2024 E1</button>
+
+    <button style="
+      background: none;
+      border: 1.5px solid #ccc;
+      color: #eee;
+      padding: 6px 12px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    " onclick="loadComet('133P')">133P</button>
+
+    <button style="
+      background: none;
+      border: 1.5px solid #ccc;
+      color: #eee;
+      padding: 6px 12px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    " onclick="loadComet('3I')">3I/ATLAS</button>
+  </div>
+
+  <div id="actBoxQ" style="
+    position: fixed;
+    bottom: 190px;
+    right: 20px;
+    z-index: 1002;
+    font-family: monospace, sans-serif;
+    font-size: 14px;
+    color: #fff;
+    background: rgba(0,0,0,0.6);
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid #fff;
+    display: inline-block;
+    white-space: nowrap;
+  ">Q: --</div>
+
+  <div id="actBoxDecay" style="
+    position: fixed;
+    bottom: 150px;
+    right: 20px;
+    z-index: 1002;
+    font-family: monospace, sans-serif;
+    font-size: 14px;
+    color: #fff;
+    background: rgba(0,0,0,0.6);
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid #fff;
+    display: inline-block;
+    white-space: nowrap;
+  ">decay: --</div>
+
+  <div id="particleCounter" style="
+    position: fixed;
+    bottom: 110px;
+    right: 20px;
+    z-index: 1001;
+    font-family: monospace, sans-serif;
+    font-size: 14px;
+    color: #fff;
+    background: rgba(0,0,0,0.6);
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid #fff;
+  ">
+    Particles: --
+  </div>
+
+  <div id="fpsCounter" style="
+    position: fixed;
+    bottom: 70px;
+    right: 20px;
+    z-index: 1001;
+    font-family: monospace, sans-serif;
+    font-size: 14px;
+    color: #fff;
+    background: rgba(0,0,0,0.6);
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid #fff;
+  ">
+    FPS: --
+  </div>
+
+  <div id="betaCurvePanel" style="
+    position: fixed;
+    right: 20px;
+    top: 500px;
+    width: 370px;
+    z-index: 1010;
+    font-family: Inter, system-ui, sans-serif;
+    color: #e7f0ff;
+    background: linear-gradient(180deg, rgba(11, 14, 19, 0.85), rgba(12,16,22,0.85));
+    border: 1px solid rgba(218, 218, 218, 0.35);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.06);
+    backdrop-filter: blur(6px);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 12px 12px 12px;
+    box-sizing: border-box;
+  ">
+    <div style="display:flex; align-items:center; justify-content:space-between;">
+      <div style="font-size:16px; font-weight:600; letter-spacing:0.2px; opacity:.9;">
+        β Gradation Curve
+      </div>
+      <div style="display:flex; gap:6px; align-items:center;"></div>
+    </div>
+
+    <div style="position:relative;">
+      <canvas id="betaCurveCanvas"
+        width="340" height="260"
+        style="width:340px;height:260px; background:#0a1016; border-radius:10px; border:1px solid rgba(218, 218, 218, 0.5);">
+      </canvas>
+
+      <div id="betaCurveTip" style="
+        position:absolute; pointer-events:none; transform:translate(-50%,-120%);
+        background: rgba(12,18,26,0.9); color:#dff3ff; font-size:11px;
+        padding: 4px 6px; border-radius:6px; border:1px solid rgba(130,160,190,0.4);
+        box-shadow: 0 2px 10px rgba(0,0,0,0.4); display:none;">
+        β: 0.00 • w: 0.00
+      </div>
     </div>
   </div>
-</div>
 
-<style>
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-</style>
+  <div id="mobileMenuBar">
+    <button data-panel="controlsPanel">Controls</button>
+    <button data-panel="viewPanel">View</button>
+    <button data-panel="cometsPanel">Comets</button>
+    <button data-panel="infoPanel">Info</button>
+  </div>
+
+  <div id="mobileDrawerBackdrop"></div>
+
+  <div id="mobileDrawer">
+    <div id="mobileDrawerHandle"></div>
+    <div id="mobileDrawerHeader">
+      <span id="mobileDrawerTitle">Menu</span>
+      <button id="mobileDrawerClose">✕</button>
+    </div>
+
+    <div id="controlsPanel" class="mobilePanel"></div>
+    <div id="viewPanel" class="mobilePanel"></div>
+    <div id="cometsPanel" class="mobilePanel"></div>
+    <div id="infoPanel" class="mobilePanel"></div>
+  </div>
 
   <script src="https://cdn.babylonjs.com/babylon.js"></script>
   <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
@@ -734,88 +829,216 @@
 
   <script src="./main.patched.js"></script>
 
-<script>
-  function loadComet(id) {
+  <script>
+    function loadComet(id) {
+      const comets = {
+        "67P": {
+          solutions: [
+            {
+              e: 0.64090813,
+              q: 1.24326564,
+              i: 7.04029491,
+              omega: 50.135573804414,
+              w: 12.798249734157,
+              T: 2457247.5887
+            }
+          ]
+        },
+        "C2024E1": {
+          solutions: [{ e: 1.00048372, q: 0.56171583, i: 75.21807230, omega: 108.38859762573, w: 243.65164937935, T: 2461060.9651 }]
+        },
+        "133P": {
+          solutions: [{ e: 0.15637284, q: 2.67049635, i: 1.38981783, omega: 160.09954075742, w: 131.90192411846, T: 2460440.7000 }]
+        },
+        "3I": {
+          solutions: [{ e: 6.13941774, q: 1.35638454, i: 175.11310480, omega: 322.15684249105, w: 128.01051366675, T: 2460977.9814 }]
+        }
+      };
 
-const comets = {
-  "67P": {
-    solutions: [
-      {
-        e: 0.64090813,
-        q: 1.24326564,
-        i: 7.04029491,
-        omega: 50.135573804414,
-        w: 12.798249734157,
-        T: 2457247.5887
+      window.currentPresetId = id;
+
+      function pickSolutionForJD(solutions, jd) {
+        if (!Array.isArray(solutions) || solutions.length === 0) return null;
+        let best = solutions[0], bestAbs = Math.abs((solutions[0].T ?? 0) - jd);
+        for (let k = 1; k < solutions.length; k++) {
+          const d = Math.abs((solutions[k].T ?? 0) - jd);
+          if (d < bestAbs) { best = solutions[k]; bestAbs = d; }
+        }
+        return best;
       }
-    ]
-  },
 
-  "C2024E1": {
-    solutions: [{ e: 1.00048372, q: 0.56171583, i: 75.21807230, omega: 108.38859762573, w: 243.65164937935, T: 2461060.9651 }]
-  },
-  "133P": {
-    solutions: [{ e: 0.15637284, q: 2.67049635, i: 1.38981783, omega: 160.09954075742, w: 131.90192411846, T: 2460440.7000 }]
-  },
-  "3I": {
-    solutions: [{ e: 6.13941774, q: 1.35638454, i: 175.11310480, omega: 322.15684249105, w: 128.01051366675, T: 2460977.9814 }]
-  }
-};
+      const displayName = {
+        "67P": "67P/Churyumov–Gerasimenko",
+        "C2024E1": "C/2024 E1",
+        "133P": "133P/Elst–Pizarro",
+        "3I": "3I/ATLAS"
+      }[id];
 
-window.currentPresetId = id;
+      const pack = comets[id];
+      if (!pack) return;
 
-function pickSolutionForJD(solutions, jd) {
-  if (!Array.isArray(solutions) || solutions.length === 0) return null;
-  let best = solutions[0], bestAbs = Math.abs((solutions[0].T ?? 0) - jd);
-  for (let k = 1; k < solutions.length; k++) {
-    const d = Math.abs((solutions[k].T ?? 0) - jd);
-    if (d < bestAbs) { best = solutions[k]; bestAbs = d; }
-  }
-  return best;
-}
-    const displayName = {
-      "67P": "67P/Churyumov–Gerasimenko",
-      "C2024E1": "C/2024 E1",
-      "133P": "133P/Elst–Pizarro",
-      "3I": "3I/ATLAS"
-    }[id];
+      const nowJD = (window.simulationTimeJD ?? (pack.solutions[0]?.T ?? 2451544.5));
+      const sol = pickSolutionForJD(pack.solutions, nowJD);
+      if (!sol) return;
 
-const pack = comets[id];
-if (!pack) return;
+      document.getElementById('eccentricityInput').value = sol.e;
+      document.getElementById('perihelionInput').value  = sol.q;
+      document.getElementById('inclinationInput').value = sol.i;
+      document.getElementById('longitudeAscendingNodeInput').value = sol.omega;
+      document.getElementById('argumentPerihelionInput').value     = sol.w;
+      document.getElementById('perihelionDateInput').value         = sol.T;
 
-const nowJD = (window.simulationTimeJD ?? (pack.solutions[0]?.T ?? 2451544.5));
-const sol = pickSolutionForJD(pack.solutions, nowJD);
-if (!sol) return;
+      window.updateOrbitParameters?.();
 
-document.getElementById('eccentricityInput').value = sol.e;
-document.getElementById('perihelionInput').value  = sol.q;
-document.getElementById('inclinationInput').value = sol.i;
-document.getElementById('longitudeAscendingNodeInput').value = sol.omega;
-document.getElementById('argumentPerihelionInput').value     = sol.w;
-document.getElementById('perihelionDateInput').value         = sol.T;
+      const daysBeforeT = 400;
+      const jdStart = sol.T - daysBeforeT;
+      window.setSimTime?.(jdStart, { resetParticles: true, focus: !window._skipInitialFocus });
 
-window.updateOrbitParameters?.();
-
-const daysBeforeT = 400;
-const jdStart = sol.T - daysBeforeT;
-window.setSimTime?.(jdStart, { resetParticles: true, focus: !window._skipInitialFocus });
-
-window._skipInitialFocus = false;
-
-    window.switchToPreset?.(displayName || id);
-  }
-</script>
+      window._skipInitialFocus = false;
+      window.switchToPreset?.(displayName || id);
+    }
+  </script>
 
   <script>
-  document.getElementById("startBtn").addEventListener("click", () => {
-    const spinner = document.getElementById("loadingSpinner");
-    spinner.style.display = "block";
+    document.getElementById("startBtn").addEventListener("click", () => {
+      const spinner = document.getElementById("loadingSpinner");
+      spinner.style.display = "block";
 
-    setTimeout(() => {
-      document.getElementById("homeScreen").style.display = "none";
-      startSimulation();
-    }, 300);
-  });
-</script>
+      setTimeout(() => {
+        document.getElementById("homeScreen").style.display = "none";
+        startSimulation();
+      }, 300);
+    });
+  </script>
+
+  <script>
+    (function setupMobileUI() {
+      const isMobile = window.matchMedia("(max-width: 900px)").matches;
+      if (!isMobile) return;
+
+      const menuBar = document.getElementById("mobileMenuBar");
+      const drawer = document.getElementById("mobileDrawer");
+      const backdrop = document.getElementById("mobileDrawerBackdrop");
+      const closeBtn = document.getElementById("mobileDrawerClose");
+      const titleEl = document.getElementById("mobileDrawerTitle");
+
+      const controlsPanel = document.getElementById("controlsPanel");
+      const viewPanel = document.getElementById("viewPanel");
+      const cometsPanel = document.getElementById("cometsPanel");
+      const infoPanel = document.getElementById("infoPanel");
+
+      const uiOverlay = document.getElementById("uiOverlay");
+      const axisControl = document.getElementById("axisControl");
+      const cometButtons = document.getElementById("cometButtons");
+      const pauseContainer = document.getElementById("pauseContainer");
+      const statusContainer = document.getElementById("statusContainer");
+      const betaCurvePanel = document.getElementById("betaCurvePanel");
+      const actBoxQ = document.getElementById("actBoxQ");
+      const actBoxDecay = document.getElementById("actBoxDecay");
+      const particleCounter = document.getElementById("particleCounter");
+      const fpsCounter = document.getElementById("fpsCounter");
+
+      function wrapSection(title, el) {
+        const section = document.createElement("div");
+        section.className = "mobileSection";
+
+        const h = document.createElement("h3");
+        h.textContent = title;
+        section.appendChild(h);
+
+        section.appendChild(el);
+        return section;
+      }
+
+      function resetMovedStyles(el) {
+        el.style.position = "static";
+        el.style.top = "";
+        el.style.right = "";
+        el.style.bottom = "";
+        el.style.left = "";
+        el.style.width = "100%";
+        el.style.maxWidth = "none";
+        el.style.maxHeight = "none";
+        el.style.background = "transparent";
+        el.style.backdropFilter = "none";
+        el.style.padding = "0";
+        el.style.margin = "0";
+        el.style.boxShadow = "none";
+        el.style.border = "none";
+        el.style.display = "block";
+      }
+
+      controlsPanel.innerHTML = "";
+      viewPanel.innerHTML = "";
+      cometsPanel.innerHTML = "";
+      infoPanel.innerHTML = "";
+
+      controlsPanel.appendChild(wrapSection("Simulation", uiOverlay));
+
+      viewPanel.appendChild(wrapSection("Pause", pauseContainer));
+      viewPanel.appendChild(wrapSection("Axis", axisControl));
+      viewPanel.appendChild(wrapSection("Status", statusContainer));
+      viewPanel.appendChild(wrapSection("Beta curve", betaCurvePanel));
+
+      infoPanel.appendChild(wrapSection("Activity Q", actBoxQ));
+      infoPanel.appendChild(wrapSection("Decay", actBoxDecay));
+      infoPanel.appendChild(wrapSection("Particles", particleCounter));
+      infoPanel.appendChild(wrapSection("FPS", fpsCounter));
+
+      cometsPanel.appendChild(wrapSection("Comets", cometButtons));
+
+      [
+        uiOverlay,
+        axisControl,
+        cometButtons,
+        pauseContainer,
+        statusContainer,
+        betaCurvePanel,
+        actBoxQ,
+        actBoxDecay,
+        particleCounter,
+        fpsCounter
+      ].forEach(resetMovedStyles);
+
+      axisControl.style.display = "flex";
+      axisControl.style.flexDirection = "row";
+      axisControl.style.flexWrap = "wrap";
+      axisControl.style.gap = "10px";
+
+      cometButtons.style.display = "flex";
+      cometButtons.style.flexDirection = "column";
+      cometButtons.style.gap = "6px";
+
+      const panels = {
+        controlsPanel: { el: controlsPanel, title: "Controls" },
+        viewPanel: { el: viewPanel, title: "View" },
+        cometsPanel: { el: cometsPanel, title: "Comets" },
+        infoPanel: { el: infoPanel, title: "Info" }
+      };
+
+      function closeDrawer() {
+        drawer.classList.remove("open");
+        backdrop.classList.remove("open");
+        Object.values(panels).forEach(p => p.el.classList.remove("active"));
+      }
+
+      function openPanel(panelId) {
+        Object.values(panels).forEach(p => p.el.classList.remove("active"));
+        const panel = panels[panelId];
+        if (!panel) return;
+        panel.el.classList.add("active");
+        titleEl.textContent = panel.title;
+        drawer.classList.add("open");
+        backdrop.classList.add("open");
+      }
+
+      menuBar.querySelectorAll("button[data-panel]").forEach(btn => {
+        btn.addEventListener("click", () => openPanel(btn.dataset.panel));
+      });
+
+      closeBtn.addEventListener("click", closeDrawer);
+      backdrop.addEventListener("click", closeDrawer);
+    })();
+  </script>
 </body>
 </html>
