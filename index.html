@@ -188,7 +188,7 @@
         display: none;
       }
 
-      /* SPEED CONTROL ON MAIN SCREEN AT BOTTOM */
+      /* Speed on main screen */
       #mobileSpeedBar{
         display: block;
         position: fixed;
@@ -221,9 +221,9 @@
         box-sizing: border-box;
       }
 
-      /* HIDE MAIN-SCREEN DATE CONTROL ON MOBILE */
+      /* Hide date control from main screen on mobile */
       #timelineWrapper{
-        display: none;
+        display: none !important;
       }
 
       #mobileMenuBar{
@@ -349,29 +349,6 @@
         width: 100% !important;
         max-width: 100%;
         height: auto !important;
-      }
-
-      #mobileMenuBar{
-        display: flex;
-        position: fixed;
-        left: 10px;
-        right: 10px;
-        bottom: calc(84px + var(--safe-bottom));
-        z-index: 3000;
-        gap: 8px;
-        padding: 8px;
-        background: rgba(10, 10, 16, 0.88);
-        border: 1px solid rgba(255,255,255,0.18);
-        border-radius: 14px;
-        backdrop-filter: blur(10px);
-        box-sizing: border-box;
-        transition: opacity 0.2s ease, transform 0.2s ease;
-      }
-
-      #mobileMenuBar.hidden{
-        opacity: 0;
-        pointer-events: none;
-        transform: translateY(20px);
       }
 
       #mobileMenuBar{
@@ -1075,7 +1052,6 @@
         el.style.margin = "0";
         el.style.boxShadow = "none";
         el.style.border = "none";
-        el.style.display = "block";
       }
 
       controlsPanel.innerHTML = "";
