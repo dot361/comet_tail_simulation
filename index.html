@@ -332,6 +332,16 @@
         pointer-events: none;
         transform: translateY(20px);
       }
+
+      #mobileMenuBar{
+        transition: opacity 0.2s ease, transform 0.2s ease;
+      }
+
+      #mobileMenuBar.hidden{
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(20px);
+      }
     }
 
     @media (max-width: 480px){
