@@ -188,43 +188,46 @@
         display: none;
       }
 
-      /* MOBILE: speed bar moved to the old timeline place */
+      /* SPEED CONTROL ON MAIN SCREEN AT BOTTOM */
       #mobileSpeedBar{
         display: block;
         position: fixed;
-        left: 0;
-        right: 0;
         bottom: 0;
-        z-index: 1000;
-        padding: 10px 20px calc(10px + var(--safe-bottom)) 20px;
+        left: 0;
+        width: 100%;
         background: rgba(0, 0, 0, 0.7);
-        color: white;
+        padding: 10px 20px calc(10px + var(--safe-bottom)) 20px;
         font-family: sans-serif;
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
         box-sizing: border-box;
       }
 
       #mobileSpeedBar label{
         display: block;
-        margin-bottom: 6px;
-        padding-left: 10px;
         font-weight: bold;
         color: white;
         font-size: 1.2em;
+        padding-left: 10px;
+        margin-bottom: 0;
       }
 
       #velocitySliderMobile{
         width: 95%;
-        margin: 0;
         cursor: pointer;
+        margin: 0;
         box-sizing: border-box;
       }
 
-      /* MOBILE: date timeline moved to the old speed-bar place */
+      /* DATE TIMELINE MOVED TO THE OLD FLOATING SPEED-BAR PLACE */
       #timelineWrapper{
-        bottom: calc(150px + var(--safe-bottom));
         left: 10px;
         right: 10px;
         width: auto;
+        bottom: calc(150px + var(--safe-bottom));
+        z-index: 3001;
         padding: 10px 12px;
         background: rgba(10, 10, 16, 0.88);
         border: 1px solid rgba(255,255,255,0.18);
