@@ -255,4 +255,13 @@ function initSyndyneSynchrone() {
   });
 
   exportCSVBtn.addEventListener("click", exportSynchroneSyndyneCSV);
+
+  document.getElementById("exportDensityBtn")?.addEventListener("click", async () => {
+    const btn = document.getElementById("exportDensityBtn");
+    btn.textContent = "Exporting…";
+    btn.disabled    = true;
+    await exportDensityGrid();
+    btn.textContent = "Export density grid (.npy)";
+    btn.disabled    = false;
+  });
 }

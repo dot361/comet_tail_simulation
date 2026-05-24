@@ -175,6 +175,10 @@ function updateOrbitParameters() {
 
   baseLifetime         = parseFloat(particleLifetimeInput.value);
   particleCountPerSec  = parseFloat(particleCountInput.value) || 1;
+  ejectionSpeedMps  = parseFloat(ejectionSpeedInput?.value)  || 0;
+  ejectionGamma     = parseFloat(ejectionGammaInput?.value)  ?? 0.5;
+  ejectionKappa     = parseFloat(ejectionKappaInput?.value)  ?? -0.5;
+  ejectionExpcos    = parseFloat(ejectionExpcosInput?.value) ?? 1.0;
   particleCountPerSec  = Math.max(0.01, particleCountPerSec);
 
   if (!isFinite(activityN)) activityN = 2;

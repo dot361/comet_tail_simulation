@@ -43,10 +43,18 @@
       box-sizing: border-box;
     }
 
+    #uiOverlay {
+      max-height: calc(100vh - 40px);
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,0.2) transparent;
+    }
+
     #uiOverlay label {
       display: block;
       margin-top: 4px;
-      font-size: 14px;
+      font-size: 13px;
+      opacity: 0.85;
     }
 
     #uiOverlay input[type="range"],
@@ -54,8 +62,50 @@
     #uiOverlay input[type="text"],
     #uiOverlay select {
       width: 100%;
-      margin-bottom: 5px;
+      margin-bottom: 4px;
       box-sizing: border-box;
+    }
+
+    details.ui-group {
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 6px;
+      margin-bottom: 6px;
+      overflow: hidden;
+    }
+
+    details.ui-group summary {
+      cursor: pointer;
+      padding: 7px 10px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      background: rgba(255,255,255,0.07);
+      list-style: none;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none;
+    }
+
+    details.ui-group summary::-webkit-details-marker { display: none; }
+
+    details.ui-group summary::after {
+      content: '▶';
+      font-size: 9px;
+      opacity: 0.6;
+      transition: transform 0.2s;
+    }
+
+    details.ui-group[open] summary::after {
+      transform: rotate(90deg);
+    }
+
+    details.ui-group .group-content {
+      padding: 8px 10px 4px 10px;
+    }
+
+    details.ui-group .group-content button {
+      margin-top: 6px;
     }
 
     button {
@@ -436,180 +486,153 @@
 
   <div id="uiOverlay">
 
-    <label for="eccentricityInput">Eccentricity (e):</label>
-    <input type="number" id="eccentricityInput" step="0.0001" min="0" max="10" value="0.64090813" />
+    <!-- Orbit -->
+    <details class="ui-group" open>
+      <summary>Orbit</summary>
+      <div class="group-content">
+        <label for="eccentricityInput">Eccentricity (e)</label>
+        <input type="number" id="eccentricityInput" step="0.0001" min="0" max="10" value="0.64090813" />
 
-    <label for="perihelionInput">Perihelion Distance (AU):</label>
-    <input type="number" id="perihelionInput" step="0.0001" min="0.1" value="1.24326564" />
+        <label for="perihelionInput">Perihelion Distance (AU)</label>
+        <input type="number" id="perihelionInput" step="0.0001" min="0.1" value="1.24326564" />
 
-    <label for="inclinationInput">Inclination (°):</label>
-    <input type="number" id="inclinationInput" step="0.01" value="7.04029491" />
+        <label for="inclinationInput">Inclination (°)</label>
+        <input type="number" id="inclinationInput" step="0.01" value="7.04029491" />
 
-    <label for="longitudeAscendingNodeInput">Longitude of Ascending Node (Ω, °):</label>
-    <input type="number" id="longitudeAscendingNodeInput" step="0.01" value="50.135573804414" />
+        <label for="longitudeAscendingNodeInput">Longitude of Ascending Node (Ω °)</label>
+        <input type="number" id="longitudeAscendingNodeInput" step="0.01" value="50.135573804414" />
 
-    <label for="argumentPerihelionInput">Argument of Perihelion (ω, °):</label>
-    <input type="number" id="argumentPerihelionInput" step="0.01" value="12.798249734157" />
+        <label for="argumentPerihelionInput">Argument of Perihelion (ω °)</label>
+        <input type="number" id="argumentPerihelionInput" step="0.01" value="12.798249734157" />
 
-    <label for="perihelionDateInput">Perihelion Date (JD):</label>
-    <input type="number" id="perihelionDateInput" step="0.1" value="2457247.5887" />
-    
-    <label for="particleLifetimeInput">Particle Lifetime (days):</label>
-    <input type="number" id="particleLifetimeInput" step="1" min="1" value="250" />
+        <label for="perihelionDateInput">Perihelion Date (JD)</label>
+        <input type="number" id="perihelionDateInput" step="0.1" value="2457247.5887" />
+      </div>
+    </details>
 
-    <label>
-      Activity exponent n (Q = k / r^n):
-      <input id="activityExponentInput" type="number" step="0.1" min="0" max="6" value="2">
-    </label>
+    <!-- Dust & Activity -->
+    <details class="ui-group" open>
+      <summary>Dust &amp; Activity</summary>
+      <div class="group-content">
+        <label for="particleCountInput">Particle count (per sec)</label>
+        <input type="number" id="particleCountInput" step="1" min="1" max="3000" value="100" />
 
-    <label>
-      Activity scale k (at 1 AU):
-      <input id="activityScaleInput" type="number" step="0.1" min="0" value="1">
-    </label>
+        <label for="particleLifetimeInput">Particle lifetime (days)</label>
+        <input type="number" id="particleLifetimeInput" step="1" min="1" value="250" />
 
-    <div class="activity-field">
-      <label for="activityHalfLifeInput">Activity decay half-life (e-days):</label>
-      <input id="activityHalfLifeInput" type="number" step="10" min="1" value="1500">
-    </div>
+        <label for="activityExponentInput">Activity exponent n (Q = k / r^n)</label>
+        <input id="activityExponentInput" type="number" step="0.1" min="0" max="6" value="2">
 
-    <label for="particleCountInput">Particle Count (per sec):</label>
-    <input type="number" id="particleCountInput" step="1" min="1" max="3000" value="100" />
+        <label for="activityScaleInput">Activity scale k (at 1 AU)</label>
+        <input id="activityScaleInput" type="number" step="0.1" min="0" value="1">
 
-    <label for="visModeSelect">Particle color:</label>
-    <select id="visModeSelect">
-      <option value="none">None</option>
-      <option value="beta">β value</option>
-      <option value="age">Age</option>
-      <option value="dist">Distance from nucleus</option>
-      <option value="vrel">Relative velocity</option>
-    </select>
+        <label for="activityHalfLifeInput">Activity decay half-life (e-days)</label>
+        <input id="activityHalfLifeInput" type="number" step="10" min="1" value="1500">
+      </div>
+    </details>
 
-    <label for="camXYZInput">Camera locking position (x, y, z)</label>
-    <input
-      type="text"
-      id="camXYZInput"
-      value="1, 1, 1"
-      placeholder="e.g. 1, 0, 0.2"
-    />
+    <!-- Velocity -->
+    <details class="ui-group">
+      <summary>Velocity</summary>
+      <div class="group-content">
+        <label for="ejectionSpeedInput">Base ejection speed V₀ (m/s)</label>
+        <input type="number" id="ejectionSpeedInput" step="50" min="0" max="5000" value="500" />
 
-    <label for="camUnitSelect">Units for locking</label>
-    <select id="camUnitSelect">
-      <option value="AU" selected>AU</option>
-      <option value="m">meters</option>
-      <option value="km">kilometers</option>
-    </select>
+        <label for="ejectionGammaInput">β exponent γ — v ∝ β^γ</label>
+        <input type="number" id="ejectionGammaInput" step="0.05" min="0" max="1" value="0.5" />
 
-    <label for="synchroneDaysInput">Synchrone days input (d)</label>
-    <input id="synchroneDaysInput" value="-120,-60,-30,-10" />
+        <label for="ejectionKappaInput">Distance exponent κ — v ∝ r_h^κ</label>
+        <input type="number" id="ejectionKappaInput" step="0.05" min="-2" max="0" value="-0.5" />
 
-    <label for="synchroneBetasInput">Synchrone betas input (0-1)</label>
-    <input id="synchroneBetasInput" value="0.01,0.05,0.1,0.3,0.7" />
+        <label for="ejectionExpcosInput">Sunward cone sharpness (expocos)</label>
+        <input type="number" id="ejectionExpcosInput" step="0.1" min="0" max="5" value="1" />
+      </div>
+    </details>
 
-    <div id="speedControl">
-      <label for="velocitySlider">Simulation speed: <span id="velocityValue">1</span></label>
-      <input type="range" id="velocitySlider" min="0" max="100" value="0" step="1">
-    </div>
+    <!-- Visualization -->
+    <details class="ui-group">
+      <summary>Visualization</summary>
+      <div class="group-content">
+        <label for="visModeSelect">Particle colour</label>
+        <select id="visModeSelect">
+          <option value="none">None (white)</option>
+          <option value="beta">β value</option>
+          <option value="age">Age</option>
+          <option value="dist">Distance from nucleus</option>
+          <option value="vrel">Relative velocity</option>
+        </select>
+      </div>
+    </details>
 
-    <div id="orbitControls" style="
-      position: absolute;
-      top: 650px;
-      right: 65px;
-      z-index: 15;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      font-family: sans-serif;
-    "></div>
+    <!-- Camera -->
+    <details class="ui-group">
+      <summary>Camera</summary>
+      <div class="group-content">
+        <label for="camXYZInput">Lock position (x, y, z)</label>
+        <input type="text" id="camXYZInput" value="1, 1, 1" placeholder="e.g. 1, 0, 0.2" />
 
-    <button style="
-      background: none;
-      border: 1.5px solid #ccc;
-      color: #eee;
-      padding: 6px 2px;
-      border-radius: 5px;
-      cursor: pointer;
-      transition: background-color 0.3s ease, color 0.3s ease;
-    " id="generateSyndynesBtn">Generate syndynes</button>
+        <label for="camUnitSelect">Units</label>
+        <select id="camUnitSelect">
+          <option value="AU" selected>AU</option>
+          <option value="m">meters</option>
+          <option value="km">kilometers</option>
+        </select>
 
-    <button style="
-      background: none;
-      border: 1.5px solid #ccc;
-      color: #eee;
-      padding: 6px 2px;
-      border-radius: 5px;
-      cursor: pointer;
-      transition: background-color 0.3s ease, color 0.3s ease;
-    " id="generateSynchronesBtn">Generate synchrones</button>
+        <button id="lockCamPosBtn">Lock camera position</button>
+        <button id="lockEarthBtn">Lock camera to Earth</button>
+        <button id="toggleFocusBtn">Focus on Comet</button>
+        <button id="updateViewBtn" disabled>Update Position</button>
+      </div>
+    </details>
 
-    <button style="
-      background: none;
-      border: 1.5px solid #ccc;
-      color: #eee;
-      padding: 6px 2px;
-      border-radius: 5px;
-      cursor: pointer;
-      transition: background-color 0.3s ease, color 0.3s ease;
-    " id="exportSynSydCSVBtn">Export syn/synd CSV (RA/Dec)</button>
+    <!-- Analysis -->
+    <details class="ui-group">
+      <summary>Analysis</summary>
+      <div class="group-content">
+        <label for="synchroneDaysInput">Synchrone emission times (d)</label>
+        <input id="synchroneDaysInput" value="-120,-60,-30,-10" />
 
-    <button style="
-      background: none;
-      border: 1.5px solid #ccc;
-      color: #eee;
-      padding: 6px 2px;
-      border-radius: 5px;
-      cursor: pointer;
-      transition: background-color 0.3s ease, color 0.3s ease;
-    " id="lockCamPosBtn">Lock camera position</button>
+        <label for="synchroneBetasInput">β values (0–1)</label>
+        <input id="synchroneBetasInput" value="0.01,0.05,0.1,0.3,0.7" />
 
-    <button style="
-      background: none;
-      border: 1.5px solid #ccc;
-      color: #eee;
-      padding: 6px 2px;
-      border-radius: 5px;
-      cursor: pointer;
-      transition: background-color 0.3s ease, color 0.3s ease;
-    " id="lockEarthBtn">Lock camera to Earth</button>
+        <button id="generateSyndynesBtn">Generate syndynes</button>
+        <button id="generateSynchronesBtn">Generate synchrones</button>
+        <button id="exportSynSydCSVBtn">Export syn/synd CSV (RA/Dec)</button>
 
-    <button style="
-      background: none;
-      border: 1.5px solid #ccc;
-      color: #eee;
-      padding: 6px 2px;
-      border-radius: 5px;
-      cursor: pointer;
-      transition: background-color 0.3s ease, color 0.3s ease;
-    " id="toggleGridBtn">Hide Grid</button>
+        <label for="densityGridNInput">Density grid resolution (N³)</label>
+        <select id="densityGridNInput">
+          <option value="32">32³ — 131k voxels</option>
+          <option value="64" selected>64³ — 262k voxels</option>
+          <option value="128">128³ — 2M voxels</option>
+          <option value="256">256³ — 16M voxels</option>
+        </select>
+        <label for="densityMaxAgeInput">Max particle age for export (days, 0 = all)</label>
+        <input id="densityMaxAgeInput" type="number" value="50" min="0" max="500" step="5" style="width:60px">
+        <label for="densityMaxRadInput">Max distance from nucleus (km, 0 = all)</label>
+        <input id="densityMaxRadInput" type="number" value="2000000" min="0" max="50000000" step="100000" style="width:90px">
+        <label for="densityClipLoInput">Bound clip low % (outlier trim)</label>
+        <input id="densityClipLoInput" type="number" value="1" min="0" max="10" step="0.5" style="width:60px">
+        <label for="densityClipHiInput">Bound clip high %</label>
+        <input id="densityClipHiInput" type="number" value="99" min="90" max="100" step="0.5" style="width:60px">
+        <button id="exportDensityBtn">Export density grid (.npy)</button>
+      </div>
+    </details>
 
-    <button style="
-      background: none;
-      border: 1.5px solid #ccc;
-      color: #eee;
-      padding: 6px 2px;
-      border-radius: 5px;
-      cursor: pointer;
-      transition: background-color 0.3s ease, color 0.3s ease;
-    " id="toggleOrbitBtn">Toggle Orbit Visibility</button>
+    <!-- View -->
+    <details class="ui-group">
+      <summary>View</summary>
+      <div class="group-content">
+        <div id="speedControl">
+          <label for="velocitySlider">Simulation speed: <span id="velocityValue">1</span>×</label>
+          <input type="range" id="velocitySlider" min="0" max="100" value="0" step="1">
+        </div>
+        <button id="toggleOrbitBtn">Toggle Orbit Visibility</button>
+        <button id="toggleGridBtn">Hide Grid</button>
+      </div>
+    </details>
 
-    <button style="
-      background: none;
-      border: 1.5px solid #ccc;
-      color: #eee;
-      padding: 6px 12px;
-      border-radius: 5px;
-      cursor: pointer;
-      transition: background-color 0.3s ease, color 0.3s ease;
-    " id="toggleFocusBtn">Focus on Comet</button>
+    <div id="orbitControls" style="display:none;"></div>
 
-    <button style="
-      background: none;
-      border: 1.5px solid #ccc;
-      color: #eee;
-      padding: 6px 12px;
-      border-radius: 5px;
-      cursor: pointer;
-      transition: background-color 0.3s ease, color 0.3s ease;
-    " id="updateViewBtn" disabled>Update Position</button>
   </div>
 
   <div id="statusContainer" style="
@@ -898,6 +921,7 @@
   <script src="./Planets.js"></script>
   <script src="./Comet.js"></script>
   <script src="./SyndyneSynchrone.js"></script>
+  <script src="./ExportDensity.js"></script>
   <script src="./Particles.js"></script>
   <script src="./UI.js"></script>
   <script src="./RenderLoop.js"></script>

@@ -34,6 +34,7 @@ function initUI() {
     eccentricityInput, perihelionInput, inclinationInput,
     longitudeAscendingNodeInput, argumentPerihelionInput, perihelionDateInput,
     particleLifetimeInput, particleCountInput,
+    ejectionSpeedInput, ejectionGammaInput, ejectionKappaInput, ejectionExpcosInput,
     activityExponentInput, activityScaleInput, activityHalfLifeInput
   ].forEach(input => {
     input.addEventListener("input", () => {

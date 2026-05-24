@@ -194,7 +194,7 @@ fn fs_main(@location(0) life: f32, @location(1) @interpolate(flat) pid: u32) -> 
   // ── GPU buffers ─────────────────────────────────────────────────────────────
   const posLifeGPU = device.createBuffer({
     size:  MAX_PARTICLES * 16,
-    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
   });
   const velBetaGPU = device.createBuffer({
     size:  MAX_PARTICLES * 16,
@@ -321,5 +321,22 @@ fn fs_main(@location(0) life: f32, @location(1) @interpolate(flat) pid: u32) -> 
     device.queue.submit([enc.finish()]);
   }
 
-  return { seed, update, resize, clear, max: MAX_PARTICLES };
+  // ── GPU readback (copies posLife buffer to CPU for export) ─────────────────
+  async function readback() {
+    const byteSize = MAX_PARTICLES * 16;
+    const staging  = device.createBuffer({
+      size:  byteSize,
+      usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
+    });
+    const enc = device.createCommandEncoder();
+    enc.copyBufferToBuffer(posLifeGPU, 0, staging, 0, byteSize);
+    device.queue.submit([enc.finish()]);
+    await staging.mapAsync(GPUMapMode.READ);
+    const out = new Float32Array(staging.getMappedRange().slice(0));
+    staging.unmap();
+    staging.destroy();
+    return out; // interleaved [x, y, z, life, x, y, z, life, ...]
+  }
+
+  return { seed, update, resize, clear, readback, max: MAX_PARTICLES };
 }
