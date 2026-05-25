@@ -30,7 +30,7 @@ async function initEngine() {
       return null;
     }
     try {
-      const wgpu = new BABYLON.WebGPUEngine(canvas, { antialiasing: true });
+      const wgpu = new BABYLON.WebGPUEngine(canvas, { antialiasing: true, preserveDrawingBuffer: true });
       await wgpu.initAsync();
       const caps = wgpu.getCaps?.() || {};
       hasCompute = !!(caps.supportComputeShaders || caps.supportCompute);
@@ -55,7 +55,7 @@ async function initEngine() {
     );
   } else {
     console.warn("[CometSim] Using WebGL fallback.");
-    engine = new BABYLON.Engine(canvas, true);
+    engine = new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
     hasCompute = false;
     setBadge("GPU: WebGL (Compute OFF)", "#3d0b0b", "#f33");
   }

@@ -88,6 +88,46 @@ function eclToEq(v) {
   );
 }
 
+
+function eqToEcl(v) {
+  return new BABYLON.Vector3(
+    v.x,
+    v.y * _cE + v.z * _sE,
+   -v.y * _sE + v.z * _cE
+  );
+}
+
+function raDecDegToEclipticDirection(raDeg, decDeg) {
+  const ra  = raDeg * DEG;
+  const dec = decDeg * DEG;
+  const cDec = Math.cos(dec);
+  const eq = new BABYLON.Vector3(
+    cDec * Math.cos(ra),
+    cDec * Math.sin(ra),
+    Math.sin(dec)
+  );
+  return eqToEcl(eq).normalize();
+}
+
+function formatRaHours(raDeg) {
+  let totalSeconds = ((raDeg / 15) % 24 + 24) % 24 * 3600;
+  const h = Math.floor(totalSeconds / 3600);
+  totalSeconds -= h * 3600;
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds - m * 60;
+  return `${String(h).padStart(2, "0")}h ${String(m).padStart(2, "0")}m ${s.toFixed(1).padStart(4, "0")}s`;
+}
+
+function formatDecDeg(decDeg) {
+  const sign = decDeg < 0 ? "-" : "+";
+  let x = Math.abs(decDeg);
+  const d = Math.floor(x);
+  x = (x - d) * 60;
+  const m = Math.floor(x);
+  const s = (x - m) * 60;
+  return `${sign}${String(d).padStart(2, "0")}° ${String(m).padStart(2, "0")}′ ${s.toFixed(1).padStart(4, "0")}″`;
+}
+
 function vecEqToRaDecDeg(vEq) {
   const u = vEq.normalize();
   let ra = Math.atan2(u.y, u.x) * 180 / Math.PI;
