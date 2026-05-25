@@ -1,12 +1,3 @@
-// ─── Particle density grid export (.npy + meta JSON) ─────────────────────────
-//
-// Coordinate frame: cometocentric, rotated to (n, m, l) in km:
-//   m = anti-solar (Sun→Comet — along tail)
-//   l = orbital north (r × v — out of orbital plane)
-//   n = l × m (cross-tail, completes right-handed system)
-//
-// Use convert_to_cube.py to wrap this into the .npz that
-// visualize_density_cube.py expects.
 
 // ── NumPy .npy writer (version 1.0) ──────────────────────────────────────────
 function _writeNpy(typedArray, shape, dtype) {
@@ -66,26 +57,26 @@ async function exportDensityGrid() {
   const cPos = [cs.r_scene.x, cs.r_scene.y, cs.r_scene.z];
   const cVel = [cs.v_scene_per_s.x, cs.v_scene_per_s.y, cs.v_scene_per_s.z];
 
-  const m_hat = _norm(cPos);                   // anti-solar (along tail)
-  const l_hat = _norm(_cross(cPos, cVel));      // orbital north
-  const n_hat = _norm(_cross(l_hat, m_hat));    // cross-tail
+  const m_hat = _norm(cPos);
+  const l_hat = _norm(_cross(cPos, cVel));
+  const n_hat = _norm(_cross(l_hat, m_hat));
 
-  const sceneToKm = 1 / (SCALE * 1000); // scene units → km
+  const sceneToKm = 1 / (SCALE * 1000);
 
   // ── Collect live particle positions in cometocentric (n, m, l) km ─────────
-  const coords = []; // flat [n0,m0,l0, n1,m1,l1, ...]
+  const coords = [];
 
   if (rawParticles) {
     const data = await rawParticles.readback();
     for (let i = 0; i < maxUsed; i++) {
       const rem = data[i * 4 + 3];
-      if (rem <= 0) continue;                  // dead
-      if (rem < minRemainSec) continue;        // too old
+      if (rem <= 0) continue;
+      if (rem < minRemainSec) continue;
       const dx = data[i*4]   - cPos[0];
       const dy = data[i*4+1] - cPos[1];
       const dz = data[i*4+2] - cPos[2];
       const dkm2 = (dx*dx + dy*dy + dz*dz) * sceneToKm * sceneToKm;
-      if (dkm2 > maxRadKm2) continue;         // too far from nucleus
+      if (dkm2 > maxRadKm2) continue;
       coords.push(
         (dx*n_hat[0] + dy*n_hat[1] + dz*n_hat[2]) * sceneToKm,
         (dx*m_hat[0] + dy*m_hat[1] + dz*m_hat[2]) * sceneToKm,
@@ -96,7 +87,7 @@ async function exportDensityGrid() {
     for (let i = 0; i < maxUsed; i++) {
       if (!cpuSlots[i] || expiryByIndex[i] <= simSeconds) continue;
       const remainSec = expiryByIndex[i] - simSeconds;
-      if (remainSec < minRemainSec) continue;  // too old
+      if (remainSec < minRemainSec) continue;
       const s = cpuSlots[i];
       const { r } = keplerUniversalPropagate(s.r0_m, s.v0_mps,
         (simulationTimeJD - s.t0JD) * SECONDS_PER_DAY, s.mu);
@@ -104,7 +95,7 @@ async function exportDensityGrid() {
       const dy = r.y * SCALE - cPos[1];
       const dz = r.z * SCALE - cPos[2];
       const dkm2 = (dx*dx + dy*dy + dz*dz) * sceneToKm * sceneToKm;
-      if (dkm2 > maxRadKm2) continue;         // too far from nucleus
+      if (dkm2 > maxRadKm2) continue;
       coords.push(
         (dx*n_hat[0] + dy*n_hat[1] + dz*n_hat[2]) * sceneToKm,
         (dx*m_hat[0] + dy*m_hat[1] + dz*m_hat[2]) * sceneToKm,
@@ -117,9 +108,7 @@ async function exportDensityGrid() {
   if (np === 0) { console.warn('[ExportDensity] No live particles found.'); return; }
 
   // ── Percentile-based bounds (1%–99%) with 5 % padding ────────────────────
-  // Min/max is dominated by old particles (250-day lifetime, comet moved ~80°
-  // in orbit) whose positions project hundreds of millions of km in the current
-  // cross-tail frame. Percentile clipping keeps the dense region visible.
+
   const pctLo = parseFloat(document.getElementById('densityClipLoInput')?.value ?? 1);
   const pctHi = parseFloat(document.getElementById('densityClipHiInput')?.value ?? 99);
 
@@ -153,12 +142,10 @@ async function exportDensityGrid() {
     counts[in_ * n2 + im * gridN + il] += 1;
   }
 
-  // Normalise to number density (particles / km³)
   const voxVol = (rn/gridN) * (rm/gridN) * (rl/gridN);
   const rhoNum = new Float32Array(counts.length);
   for (let i = 0; i < counts.length; i++) rhoNum[i] = counts[i] / voxVol;
 
-  // Edge arrays (N+1, float64) — bin boundaries in km
   function makeEdges(min, range) {
     const e = new Float64Array(gridN + 1);
     for (let i = 0; i <= gridN; i++) e[i] = min + range * (i / gridN);

@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Comet Simulation</title>
+  <link rel="stylesheet" href="./css/main.css" />
   <style>
     :root{
       --safe-top: env(safe-area-inset-top, 0px);
@@ -514,8 +515,8 @@
     <details class="ui-group" open>
       <summary>Dust &amp; Activity</summary>
       <div class="group-content">
-        <label for="particleCountInput">Particle count (per sec)</label>
-        <input type="number" id="particleCountInput" step="1" min="1" max="3000" value="100" />
+        <label for="particleCountInput">Particle count (per sim-day @ 1 AU)</label>
+        <input type="number" id="particleCountInput" step="1" min="1" max="100000" value="500" />
 
         <label for="particleLifetimeInput">Particle lifetime (days)</label>
         <input type="number" id="particleLifetimeInput" step="1" min="1" value="250" />
@@ -615,6 +616,7 @@
         <label for="densityClipHiInput">Bound clip high %</label>
         <input id="densityClipHiInput" type="number" value="99" min="90" max="100" step="0.5" style="width:60px">
         <button id="exportDensityBtn">Export density grid (.npy)</button>
+        <button id="exportValidationBtn">Export orbit validation CSV</button>
       </div>
     </details>
 
@@ -624,7 +626,7 @@
       <div class="group-content">
         <div id="speedControl">
           <label for="velocitySlider">Simulation speed: <span id="velocityValue">1</span>×</label>
-          <input type="range" id="velocitySlider" min="0" max="100" value="0" step="1">
+          <input type="range" id="velocitySlider" min="0" max="93" value="0" step="1">
         </div>
         <button id="toggleOrbitBtn">Toggle Orbit Visibility</button>
         <button id="toggleGridBtn">Hide Grid</button>
@@ -910,92 +912,26 @@
   <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
   <script src="https://cdn.babylonjs.com/webgpu/babylon.webgpu.min.js"></script>
 
-  <script src="./Constants.js"></script>
-  <script src="./Utils.js"></script>
-  <script src="./Physics.js"></script>
-  <script src="./BetaCurve.js"></script>
-  <script src="./ParticlesGPU.js"></script>
-  <script src="./Engine.js"></script>
-  <script src="./Camera.js"></script>
-  <script src="./World.js"></script>
-  <script src="./Planets.js"></script>
-  <script src="./Comet.js"></script>
-  <script src="./SyndyneSynchrone.js"></script>
-  <script src="./ExportDensity.js"></script>
-  <script src="./Particles.js"></script>
-  <script src="./UI.js"></script>
-  <script src="./RenderLoop.js"></script>
-  <script src="./main.js"></script>
+  <script src="./src/data/comets.js"></script>
+  <script src="./src/simulation/Constants.js"></script>
+  <script src="./src/simulation/Utils.js"></script>
+  <script src="./src/simulation/Physics.js"></script>
+  <script src="./src/simulation/BetaCurve.js"></script>
+  <script src="./src/simulation/ParticlesGPU.js"></script>
+  <script src="./src/simulation/Engine.js"></script>
+  <script src="./src/simulation/Camera.js"></script>
+  <script src="./src/simulation/World.js"></script>
+  <script src="./src/simulation/Planets.js"></script>
+  <script src="./src/simulation/Comet.js"></script>
+  <script src="./src/simulation/SyndyneSynchrone.js"></script>
+  <script src="./src/simulation/ExportDensity.js"></script>
+  <script src="./src/simulation/Particles.js"></script>
+  <script src="./src/simulation/OrbitValidationExport.js"></script>
+  <script src="./src/simulation/UI.js"></script>
+  <script src="./src/simulation/RenderLoop.js"></script>
+  <script src="./src/simulation/main.js"></script>
+  <script src="./src/simulation/CometLoader.js"></script>
 
-  <script>
-    function loadComet(id) {
-      const comets = {
-        "67P": {
-          solutions: [
-            {
-              e: 0.64090813,
-              q: 1.24326564,
-              i: 7.04029491,
-              omega: 50.135573804414,
-              w: 12.798249734157,
-              T: 2457247.5887
-            }
-          ]
-        },
-        "C2024E1": {
-          solutions: [{ e: 1.00048372, q: 0.56171583, i: 75.21807230, omega: 108.38859762573, w: 243.65164937935, T: 2461060.9651 }]
-        },
-        "133P": {
-          solutions: [{ e: 0.15637284, q: 2.67049635, i: 1.38981783, omega: 160.09954075742, w: 131.90192411846, T: 2460440.7000 }]
-        },
-        "3I": {
-          solutions: [{ e: 6.13941774, q: 1.35638454, i: 175.11310480, omega: 322.15684249105, w: 128.01051366675, T: 2460977.9814 }]
-        }
-      };
-
-      window.currentPresetId = id;
-
-      function pickSolutionForJD(solutions, jd) {
-        if (!Array.isArray(solutions) || solutions.length === 0) return null;
-        let best = solutions[0], bestAbs = Math.abs((solutions[0].T ?? 0) - jd);
-        for (let k = 1; k < solutions.length; k++) {
-          const d = Math.abs((solutions[k].T ?? 0) - jd);
-          if (d < bestAbs) { best = solutions[k]; bestAbs = d; }
-        }
-        return best;
-      }
-
-      const displayName = {
-        "67P": "67P/Churyumov–Gerasimenko",
-        "C2024E1": "C/2024 E1",
-        "133P": "133P/Elst–Pizarro",
-        "3I": "3I/ATLAS"
-      }[id];
-
-      const pack = comets[id];
-      if (!pack) return;
-
-      const nowJD = (window.simulationTimeJD ?? (pack.solutions[0]?.T ?? 2451544.5));
-      const sol = pickSolutionForJD(pack.solutions, nowJD);
-      if (!sol) return;
-
-      document.getElementById('eccentricityInput').value = sol.e;
-      document.getElementById('perihelionInput').value  = sol.q;
-      document.getElementById('inclinationInput').value = sol.i;
-      document.getElementById('longitudeAscendingNodeInput').value = sol.omega;
-      document.getElementById('argumentPerihelionInput').value     = sol.w;
-      document.getElementById('perihelionDateInput').value         = sol.T;
-
-      window.updateOrbitParameters?.();
-
-      const daysBeforeT = 400;
-      const jdStart = sol.T - daysBeforeT;
-      window.setSimTime?.(jdStart, { resetParticles: true, focus: !window._skipInitialFocus });
-
-      window._skipInitialFocus = false;
-      window.switchToPreset?.(displayName || id);
-    }
-  </script>
 
   <script>
     document.getElementById("startBtn").addEventListener("click", () => {

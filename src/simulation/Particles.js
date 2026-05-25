@@ -1,11 +1,3 @@
-// ─── Particle system (CPU + GPU paths) ───────────────────────────────────────
-// Globals: rawParticles, tailParticles, gpuWriteCursor, simSeconds,
-//          expiryByIndex, maxUsed, cpuSlots, particleMeshes,
-//          baseLifetime, particleCountPerSec, cumulativeExposure,
-//          distVisMaxScene, vRelMax_kms, vRelMax_scene
-// Functions: initParticles, createTailParticle, generateBeta,
-//            seedParticleAt, resetExposure
-// Call: await initParticles()
 
 // DOM refs grabbed at script-parse time (DOM is ready — scripts are end-of-body)
 const particleLifetimeInput  = document.getElementById("particleLifetimeInput");
@@ -16,29 +8,26 @@ const ejectionKappaInput     = document.getElementById("ejectionKappaInput");
 const ejectionExpcosInput    = document.getElementById("ejectionExpcosInput");
 
 let rawParticles;
-let tailParticles     = [];
-let gpuWriteCursor    = 0;
-let simSeconds        = 0;
+let tailParticles = [];
+let gpuWriteCursor = 0;
+let simSeconds = 0;
 let expiryByIndex;
-let maxUsed           = 0;
+let maxUsed = 0;
 let cpuSlots;
-let particleMeshes    = [];
-let baseLifetime        = 30;
+let particleMeshes = [];
+let baseLifetime = 30;
 let particleCountPerSec = 1;
-let ejectionSpeedMps    = 500;
-let ejectionGamma       = 0.5;
-let ejectionKappa       = -0.5;
-let ejectionExpcos      = 1.0;
+let ejectionSpeedMps = 500;
+let ejectionGamma = 0.5;
+let ejectionKappa = -0.5;
+let ejectionExpcos = 1.0;
 let cumulativeExposure  = 0;
-let distVisMaxScene   = 2;
-let vRelMax_kms       = 50;
-let vRelMax_scene     = (vRelMax_kms * 1000) * SCALE;
+let distVisMaxScene = 2;
+let vRelMax_kms = 50;
+let vRelMax_scene = (vRelMax_kms * 1000) * SCALE;
 
 function resetExposure() { cumulativeExposure = 0; }
 
-// Sunlit-hemisphere sample directed toward `axis`.
-// PDF ∝ cos^expcos(θ): expcos=0 → uniform hemisphere, expcos=1 → Lambert, higher → narrower beam.
-// z = u^(1/(expcos+1)) is the exact inversion of the CDF for this family.
 function randomSunwardDir(axis, expcos) {
   const u1  = Math.random(), u2 = Math.random();
   const z   = Math.pow(u1, 1 / (expcos + 1));
@@ -46,7 +35,6 @@ function randomSunwardDir(axis, expcos) {
   const phi = 2 * Math.PI * u2;
   const lx  = r * Math.cos(phi), ly = r * Math.sin(phi);
 
-  // Build orthonormal basis with axis as "up"
   const up  = axis.clone().normalize();
   const tmp = Math.abs(up.x) < 0.9
     ? new BABYLON.Vector3(1, 0, 0)
@@ -83,8 +71,6 @@ function createTailParticle(timeNowJD) {
   const v_scene        = cometVel_scene.clone();
   const lifeSeconds    = (baseLifetime / velocityScale) * SECONDS_PER_DAY;
 
-  // Whipple/Finson-Probstein ejection: v_ej = V0 * β^γ * r_h^κ
-  // Direction: cosine^expcos-weighted sunlit hemisphere (expcos=0 uniform, 1=Lambert, >1 narrower).
   if (ejectionSpeedMps > 0) {
     const rh_AU   = Math.max(cs.rh_AU, 0.1);
     const vEj_mps = ejectionSpeedMps

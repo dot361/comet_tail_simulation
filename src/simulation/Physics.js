@@ -7,7 +7,7 @@ function deg2rad(deg) { return deg * Math.PI / 180; }
 function keplerSolveE(M, e) {
   let E = M;
   for (let k = 0; k < 12; k++) {
-    const f  = E - e * Math.sin(E) - M;
+    const f = E - e * Math.sin(E) - M;
     const fp = 1 - e * Math.cos(E);
     const dE = -f / fp;
     E += dE;
@@ -53,9 +53,9 @@ function getPlanetPosition(jd, el) {
 function drawPlanetOrbit(scene, el, segments = 1024, color = new BABYLON.Color3(0.6, 0.7, 0.9)) {
   const pts = [];
   for (let j = 0; j <= segments; j++) {
-    const nu  = -Math.PI + (2*Math.PI*j)/segments;
-    const p   = el.a * AU * (1 - el.e*el.e);
-    const r   = p / (1 + el.e * Math.cos(nu));
+    const nu = -Math.PI + (2*Math.PI*j)/segments;
+    const p = el.a * AU * (1 - el.e*el.e);
+    const r = p / (1 + el.e * Math.cos(nu));
 
     const x_orb = r * Math.cos(nu);
     const y_orb = r * Math.sin(nu);
@@ -117,26 +117,26 @@ function keplerUniversalPropagate(r0, v0, dt, mu) {
 
   const sqrtMu = Math.sqrt(mu);
   for (let it = 0; it < 60; it++) {
-    const z  = alpha * x * x;
-    const C  = stumpffC(z);
-    const S  = stumpffS(z);
-    const F  = r0mag*vr0/sqrtMu * x*x*C + (1 - alpha*r0mag)*x*x*x*S + r0mag*x - sqrtMu*dt;
+    const z = alpha * x * x;
+    const C = stumpffC(z);
+    const S = stumpffS(z);
+    const F = r0mag*vr0/sqrtMu * x*x*C + (1 - alpha*r0mag)*x*x*x*S + r0mag*x - sqrtMu*dt;
     const dF = r0mag*vr0/sqrtMu * x*(1 - z*S) + (1 - alpha*r0mag)*x*x*C + r0mag;
     const dx = -F / dF;
     x += dx;
     if (Math.abs(dx) < 1e-10) break;
   }
 
-  const z    = alpha * x * x;
-  const C    = stumpffC(z);
-  const S    = stumpffS(z);
-  const f    = 1 - (x*x / r0mag) * C;
-  const g    = dt - (x*x*x / sqrtMu) * S;
-  const r    = r0.scale(f).add(v0.scale(g));
+  const z = alpha * x * x;
+  const C = stumpffC(z);
+  const S = stumpffS(z);
+  const f = 1 - (x*x / r0mag) * C;
+  const g = dt - (x*x*x / sqrtMu) * S;
+  const r = r0.scale(f).add(v0.scale(g));
   const rmag = r.length();
   const fdot = (sqrtMu / (rmag * r0mag)) * (z*S - 1) * x;
   const gdot = 1 - (x*x / rmag) * C;
-  const v    = r0.scale(fdot).add(v0.scale(gdot));
+  const v = r0.scale(fdot).add(v0.scale(gdot));
 
   if (![r.x,r.y,r.z,v.x,v.y,v.z].every(Number.isFinite)) {
     return { r: r0.add(v0.scale(dt)), v: v0.clone() };

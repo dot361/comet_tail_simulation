@@ -1,7 +1,3 @@
-// ─── Beta distribution curve editor ─────────────────────────────────────────
-// Self-contained canvas widget. External API: sampleBetaFromCurve(u) → beta
-
-// ─── Catmull-Rom spline helpers ───────────────────────────────────────────────
 
 function catmullRom(p0, p1, p2, p3, t) {
   const t2 = t*t, t3 = t2*t;

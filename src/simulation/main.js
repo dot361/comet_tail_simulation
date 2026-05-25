@@ -1,12 +1,9 @@
-// ─── Simulation entry point ───────────────────────────────────────────────────
-// Globals: simulationTimeJD, simulationSpeed, isPaused, uiAccum,
-//          timelineSlider, timelineLabel, updateViewBtn, timeDisplay
-// Call: startSimulation()  (invoked by the start-button click handler in HTML)
 
 let simulationTimeJD = 2451544.5;
 let simulationSpeed  = 1;
 let isPaused         = false;
 let uiAccum          = 0;
+window.simulationTimeJD = simulationTimeJD;
 
 const timelineSlider  = document.getElementById("timelineSlider");
 const timelineLabel   = document.getElementById("timelineLabel");
@@ -33,7 +30,7 @@ timelineSlider.addEventListener("input", () => {
   timelineLabel.textContent = `Date: ${jdToDateString(jd)}`;
 });
 
-// ─── Jump-to-date (paused only) ───────────────────────────────────────────────
+// ─── Jump-to-date ───────────────────────────────────────────────
 
 updateViewBtn.addEventListener("click", () => {
   const selectedJD = baseJD + parseInt(timelineSlider.value);
@@ -49,13 +46,15 @@ updateViewBtn.addEventListener("click", () => {
   maxUsed = 0;
   expiryByIndex.fill(0);
   simSeconds = 0;
+  window.emitCarry = 0;
 });
 
-// ─── Set simulation time (called by loadComet / external code) ────────────────
+// ─── Set simulation time ────────────────
 
 function setSimTime(jd, opts = {}) {
   const { resetParticles = true, focus = true } = opts;
   simulationTimeJD = jd;
+  window.simulationTimeJD = simulationTimeJD;
   timelineSlider.value = String(Math.floor(jd - baseJD));
   timelineLabel.textContent = `Date: ${jdToDateString(jd)}`;
   updateTimeDisplay(jd);
@@ -72,6 +71,7 @@ function setSimTime(jd, opts = {}) {
     maxUsed = 0;
     expiryByIndex.fill(0);
     simSeconds = 0;
+    window.emitCarry = 0;
     resetExposure();
   }
 

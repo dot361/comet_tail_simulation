@@ -1,10 +1,3 @@
-// ─── Camera setup ─────────────────────────────────────────────────────────────
-// Globals: camera, lockedCam, isCamPosLocked, isCameraFocused,
-//          autoTrackCometWhileLocked, lockMode, savedArcRotateState,
-//          lastCameraTarget, lastCameraRadius
-// Functions: initCamera, setFocusOnComet, setViewAxis,
-//            lockCameraPositionToJ2000, lockCameraToEarth, unlockCameraPosition
-// Call: initCamera()
 
 let camera, lockedCam;
 let isCamPosLocked           = false;

@@ -1,6 +1,4 @@
 // ─── WebGPU compute + render particle system ─────────────────────────────────
-// Factory: rawParticles = await setupRawParticles(engine, canvas, MAX_PARTICLES)
-// Returns: { seed, update, resize, clear, max }
 
 async function setupRawParticles(engine, parentCanvas, MAX_PARTICLES) {
   if (!(engine instanceof BABYLON.WebGPUEngine)) return null;
@@ -267,7 +265,6 @@ fn fs_main(@location(0) life: f32, @location(1) @interpolate(flat) pid: u32) -> 
   }
 
   // ── Per-frame update (compute + render pass) ────────────────────────────────
-  // simState: { baseLifetime, visMode, distVisMaxScene, vRelMax_scene }
   function update(dtSeconds, maxCount, vpMatrix, cometVel_scene, cometPos_scene, simState) {
     const { baseLifetime, visMode, distVisMaxScene, vRelMax_scene } = simState;
 
@@ -335,7 +332,7 @@ fn fs_main(@location(0) life: f32, @location(1) @interpolate(flat) pid: u32) -> 
     const out = new Float32Array(staging.getMappedRange().slice(0));
     staging.unmap();
     staging.destroy();
-    return out; // interleaved [x, y, z, life, x, y, z, life, ...]
+    return out;
   }
 
   return { seed, update, resize, clear, readback, max: MAX_PARTICLES };

@@ -1,9 +1,7 @@
 // ─── Render loop ─────────────────────────────────────────────────────────────
-// Call: startRenderLoop()  (after all initX() calls have completed)
 
 function startRenderLoop() {
 
-  // GPU particle update fires every frame (handles paused=0 dt internally)
   if (rawParticles) {
     scene.onAfterRenderObservable.add(() => {
       const dtSeconds = isPaused ? 0 : (engine.getDeltaTime() / 1000) * simulationSpeed;
@@ -34,7 +32,8 @@ function startRenderLoop() {
 
       const ageFactor = Math.exp(-Math.LN2 * (cumulativeExposure / Math.max(1e-6, fadeHalfLifeEDays)));
 
-      simulationTimeJD += simulationSpeed * (engine.getDeltaTime() / 1000) / 86400;
+      simulationTimeJD += dtDays;
+      window.simulationTimeJD = simulationTimeJD;
 
       uiAccum += engine.getDeltaTime() / 1000;
       if (uiAccum >= UI_PERIOD) {
@@ -55,7 +54,6 @@ function startRenderLoop() {
         uiAccum = 0;
       }
 
-      // Comet position
       const cs_now        = cometStateAtJD(simulationTimeJD);
       const cometVel_scene = cs_now.v_scene_per_s;
       const cometVel_mps   = cometVel_scene.scale(1 / SCALE);
@@ -66,8 +64,8 @@ function startRenderLoop() {
       const Q    = Math.max(0, activityK) * ageFactor / Math.pow(rSafe, Math.max(0, activityN));
       const scale = Math.min(1, Q);
 
-      const MAX_BIRTHS_PER_FRAME_AT_1_AU = Math.max(0, parseFloat(particleCountInput.value) || 0);
-      const targetBPF = MAX_BIRTHS_PER_FRAME_AT_1_AU * scale;
+      const PARTICLES_PER_SIM_DAY_AT_1_AU = Math.max(0, parseFloat(particleCountInput.value) || 0);
+      const targetThisFrame = PARTICLES_PER_SIM_DAY_AT_1_AU * scale * dtDays;
 
       const boxQ     = document.getElementById("actBoxQ");
       const boxDecay = document.getElementById("actBoxDecay");
@@ -75,7 +73,7 @@ function startRenderLoop() {
       if (boxDecay) boxDecay.textContent = `decay: ${(ageFactor * 100).toFixed(1)}%`;
 
       window.emitCarry = (typeof window.emitCarry !== "undefined") ? window.emitCarry : 0;
-      window.emitCarry += targetBPF;
+      window.emitCarry += targetThisFrame;
       let births = Math.floor(window.emitCarry);
       window.emitCarry -= births;
       if (births > HARD_CAP) births = HARD_CAP;
@@ -85,13 +83,11 @@ function startRenderLoop() {
         for (let k = 0; k < births; k++) createTailParticle(emitJD);
       }
 
-      // Remove expired CPU-tracked tail entries
       while (tailParticles.length &&
         (simulationTimeJD - tailParticles[0].t0JD) > tailParticles[0].lifetimeDays) {
         tailParticles.shift();
       }
 
-      // CPU particle rendering
       if (!useCompute) {
         for (let k = 0; k < maxUsed; k++) {
           const alive = (expiryByIndex[k] > simSeconds) && cpuSlots[k];
@@ -120,7 +116,6 @@ function startRenderLoop() {
           const lifeFrac = Math.max(0, Math.min(1, lifeLeft / slot.lifeSeconds));
           if (mesh.material) mesh.material.alpha = 0.5 * lifeFrac;
 
-          // Particle colouring
           if (mesh.material) {
             switch (visMode) {
               case 'beta': {
@@ -158,7 +153,6 @@ function startRenderLoop() {
         }
       }
 
-      // Update planet positions
       for (const p of planets) {
         p.mesh.position.copyFrom(getPlanetPosition(simulationTimeJD, p.el));
       }

@@ -1,6 +1,4 @@
 // ─── Planet setup ─────────────────────────────────────────────────────────────
-// Globals: PLANET_ELTS, planetColors, planets, earthEl, earthMesh
-// Call: initPlanets()  (requires scene, ui, simulationTimeJD from other files)
 
 let PLANET_ELTS, planetColors, planets, earthEl, earthMesh;
 

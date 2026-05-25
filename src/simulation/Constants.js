@@ -1,11 +1,11 @@
 // ─── Physical / astronomical constants ───────────────────────────────────────
-const AU               = 1.495978707e11;     // meters per AU
-const SECONDS_PER_DAY  = 86400;
-const DEG              = Math.PI / 180;
-const SCALE            = 1e-10;              // scene units per metre
-const PLANET_SIZE_SCALE = 80;               // visual size multiplier for planet spheres
-const GMsun            = 1.32712440018e20;  // m³/s²
-const MU_SCENE         = GMsun * Math.pow(SCALE, 3);
+const AU = 1.495978707e11;
+const SECONDS_PER_DAY = 86400;
+const DEG = Math.PI / 180;
+const SCALE = 1e-10;
+const PLANET_SIZE_SCALE = 80;
+const GMsun = 1.32712440018e20;
+const MU_SCENE  = GMsun * Math.pow(SCALE, 3);
 
 // Obliquity of the ecliptic (J2000.0)
 const EPS_J2000 = 23.439291111 * DEG;
@@ -13,15 +13,15 @@ const _cE = Math.cos(EPS_J2000);
 const _sE = Math.sin(EPS_J2000);
 
 // ─── Simulation / particle system limits ─────────────────────────────────────
-const ACTIVE_R_AU       = 3.0;       // max heliocentric distance for dust activity
+const ACTIVE_R_AU = 3.0;
 const MAX_PARTICLES_GPU = 1_000_000;
 const MAX_PARTICLES_CPU = 5_000;
-const HARD_CAP          = 512;       // max new particles spawned per render frame
-const POINT_PX          = 3.0;       // GPU particle billboard size in pixels
+const HARD_CAP = 4096;
+const POINT_PX = 3.0;
 
 // ─── UI timing ───────────────────────────────────────────────────────────────
-const UI_PERIOD = 0.15;       // seconds between UI text refreshes
-const baseJD    = 2451544.5;  // J2000.0 reference epoch
+const UI_PERIOD = 0.15;
+const baseJD = 2451544.5;
 
 // ─── Planet orbital elements (J2000.0 mean elements, degrees) ────────────────
 // [name, a(AU), e, i(°), Ω(°), ϖ(°), L(°)]

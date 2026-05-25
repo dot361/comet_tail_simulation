@@ -1,7 +1,4 @@
 // ─── UI wiring (speed, vis mode, orbit inputs, pause, shortcuts) ──────────────
-// Globals: fpsCounter, particleCounter
-// Functions: initUI, updateDiagnosticButtonState
-// Call: initUI()
 
 let fpsCounter, particleCounter;
 
@@ -18,7 +15,6 @@ function initUI() {
   fpsCounter      = document.getElementById("fpsCounter");
   particleCounter = document.getElementById("particleCounter");
 
-  // Speed slider
   const velocitySlider     = document.getElementById("velocitySlider");
   const velocityValueLabel = document.getElementById("velocityValue");
   velocitySlider.addEventListener("input", () => {
@@ -26,10 +22,8 @@ function initUI() {
     velocityValueLabel.textContent = simulationSpeed.toFixed(2) + "×";
   });
 
-  // Vis-mode dropdown
   visModeSelect?.addEventListener("change", () => { visMode = visModeSelect.value; });
 
-  // Orbit / particle inputs trigger parameter rebuild
   [
     eccentricityInput, perihelionInput, inclinationInput,
     longitudeAscendingNodeInput, argumentPerihelionInput, perihelionDateInput,
@@ -43,7 +37,6 @@ function initUI() {
     });
   });
 
-  // Pause button
   const pauseBtn = document.getElementById("pauseBtn");
   pauseBtn.addEventListener("click", () => {
     isPaused = !isPaused;
@@ -60,7 +53,6 @@ function initUI() {
 
   updateDiagnosticButtonState();
 
-  // Keyboard shortcuts
   (function setupShortcuts() {
     function isTypingTarget(el) {
       return el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
@@ -125,3 +117,7 @@ function initUI() {
     });
   })();
 }
+
+document.getElementById('exportValidationBtn')?.addEventListener('click', () => {
+  window.exportCurrentPresetValidationSamples?.();
+});

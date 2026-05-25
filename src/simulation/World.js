@@ -1,7 +1,4 @@
 // ─── World setup (AU grid, GUI layer, Sun, starfield) ─────────────────────────
-// Globals: auGridMinor, auGridMajor, isAUGridVisible, ui
-// Functions: initWorld, addLabel, setAUGridVisible
-// Call: initWorld()
 
 let auGridMinor    = null;
 let auGridMajor    = null;
@@ -128,9 +125,9 @@ function addLabel(mesh, text, opts = {}) {
   rect.linkOffsetY = opts.offsetY ?? -18;
 
   const tb = new BABYLON.GUI.TextBlock();
-  tb.text         = text;
-  tb.color        = opts.color ?? "#cfd8ff";
-  tb.fontSize     = opts.fontSize ?? 14;
+  tb.text = text;
+  tb.color = opts.color ?? "#cfd8ff";
+  tb.fontSize = opts.fontSize ?? 14;
   tb.outlineWidth = 2;
   tb.outlineColor = "#000000";
   rect.addControl(tb);

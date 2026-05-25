@@ -1,6 +1,3 @@
-// ─── Engine initialisation ────────────────────────────────────────────────────
-// Globals: canvas, engine, scene, hasCompute, useCompute, cometMesh
-// Call: await initEngine()
 
 let canvas, engine, scene;
 let hasCompute = false;

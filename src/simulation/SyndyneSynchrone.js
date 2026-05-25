@@ -1,11 +1,4 @@
 // ─── Synchrones, syndynes, and CSV export ────────────────────────────────────
-// Globals: synchroneMeshes, syndyneMeshes, synchroneEpochJD, syndyneEpochJD,
-//          lastSynchroneLines, lastSyndyneLines,
-//          synBtn, syndyneBtn, exportCSVBtn
-// Functions: initSyndyneSynchrone, computePAFromSynchrone,
-//            generateSynchronesAtEpoch, generateSyndynesAtEpoch,
-//            drawSynchrones, clearSynchrones, drawSyndynes, clearSyndynes
-// Call: initSyndyneSynchrone()
 
 let synchroneMeshes  = [];
 let syndyneMeshes    = [];
@@ -46,13 +39,13 @@ function computePAFromSynchrone({ synchronePoints, cometPos, earthPos }) {
 
   const P1eq = eclToEq(synchronePoints[iClosest]);
   const P2eq = eclToEq(synchronePoints[iOut]);
-  const d    = P2eq.subtract(P1eq).normalize();
-  const los  = cometEq.subtract(earthEq).normalize();
+  const d = P2eq.subtract(P1eq).normalize();
+  const los = cometEq.subtract(earthEq).normalize();
   const dPerp = d.subtract(los.scale(BABYLON.Vector3.Dot(d, los))).normalize();
-  const rGeo  = cometEq.subtract(earthEq).normalize();
-  const ra    = Math.atan2(rGeo.y, rGeo.x);
-  const dec   = Math.asin(rGeo.z);
-  const east  = new BABYLON.Vector3(-Math.sin(ra), Math.cos(ra), 0).normalize();
+  const rGeo = cometEq.subtract(earthEq).normalize();
+  const ra = Math.atan2(rGeo.y, rGeo.x);
+  const dec = Math.asin(rGeo.z);
+  const east = new BABYLON.Vector3(-Math.sin(ra), Math.cos(ra), 0).normalize();
   const north = new BABYLON.Vector3(
     -Math.cos(ra) * Math.sin(dec),
     -Math.sin(ra) * Math.sin(dec),

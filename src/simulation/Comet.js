@@ -1,9 +1,3 @@
-// ─── Comet orbital elements, mesh, labels, propagation ───────────────────────
-// Globals: e, q, a, i, omega, Omega, t0, orbitLine, customCometLabel,
-//          currentCometSource, currentCometName, fadeHalfLifeEDays,
-//          visMode, velocityScale, activityN, activityK
-// Functions: initComet, drawOrbit, cometStateAtJD, updateOrbitParameters
-// Call: initComet()
 
 let e, q, a, i, omega, Omega, t0;
 let orbitLine = null;
@@ -16,7 +10,6 @@ let velocityScale      = 1.0;
 let activityN          = 2;
 let activityK          = 1;
 
-// ─── DOM refs (safe to query at script-parse time, scripts are end-of-body) ───
 const eccentricityInput            = document.getElementById("eccentricityInput");
 const perihelionInput              = document.getElementById("perihelionInput");
 const inclinationInput             = document.getElementById("inclinationInput");
@@ -28,17 +21,135 @@ const activityExponentInput        = document.getElementById("activityExponentIn
 const activityScaleInput           = document.getElementById("activityScaleInput");
 const visModeSelect                = document.getElementById("visModeSelect");
 
-// ─── Comet state propagation ──────────────────────────────────────────────────
+function solveKeplerElliptic(M, eVal) {
+  M = Math.atan2(Math.sin(M), Math.cos(M));
+  let E = (eVal < 0.8) ? M : Math.PI * Math.sign(M || 1);
+
+  for (let k = 0; k < 50; k++) {
+    const f = E - eVal * Math.sin(E) - M;
+    const fp = 1 - eVal * Math.cos(E);
+    const dE = -f / fp;
+    E += dE;
+    if (Math.abs(dE) < 1e-13) break;
+  }
+
+  return E;
+}
+
+function solveKeplerHyperbolic(M, eVal) {
+  if (Math.abs(M) < 1e-14) return 0;
+
+  let H = Math.asinh(M / eVal);
+  if (Math.abs(M) > 6) {
+    H = Math.sign(M) * Math.log((2 * Math.abs(M)) / eVal + 1.8);
+  }
+
+  for (let k = 0; k < 80; k++) {
+    const sinhH = Math.sinh(H);
+    const coshH = Math.cosh(H);
+    const f = eVal * sinhH - H - M;
+    const fp = eVal * coshH - 1;
+    let dH = -f / fp;
+
+    if (Math.abs(dH) > 1) dH = Math.sign(dH);
+
+    H += dH;
+    if (Math.abs(dH) < 1e-13) break;
+  }
+
+  return H;
+}
+
+function solveBarkerParabolic(dt, q_m, mu) {
+  const C = Math.sqrt((2 * q_m * q_m * q_m) / mu);
+  const B = dt / C;
+  let D = Math.cbrt(3 * B);
+
+  for (let k = 0; k < 50; k++) {
+    const f = D + (D * D * D) / 3 - B;
+    const fp = 1 + D * D;
+    const dD = -f / fp;
+    D += dD;
+    if (Math.abs(dD) < 1e-13) break;
+  }
+
+  return D;
+}
+
+function stateFromPerihelionElementsPQW(jd) {
+  const eVal = e;
+  const mu = GMsun;
+  const q_m = q;
+  const dt = (jd - t0) * SECONDS_PER_DAY;
+  const EPS_E = 1e-10;
+
+  let r_pf;
+  let v_pf;
+
+  if (eVal < 1 - EPS_E) {
+    const a_m = q_m / (1 - eVal);
+    const n = Math.sqrt(mu / (a_m * a_m * a_m));
+    const M = n * dt;
+    const E = solveKeplerElliptic(M, eVal);
+
+    const cosE = Math.cos(E);
+    const sinE = Math.sin(E);
+    const oneMinusECosE = 1 - eVal * cosE;
+
+    const x = a_m * (cosE - eVal);
+    const y = a_m * Math.sqrt(1 - eVal * eVal) * sinE;
+
+    const Edot = n / oneMinusECosE;
+    const vx = -a_m * sinE * Edot;
+    const vy =  a_m * Math.sqrt(1 - eVal * eVal) * cosE * Edot;
+
+    r_pf = new BABYLON.Vector3(x, y, 0);
+    v_pf = new BABYLON.Vector3(vx, vy, 0);
+
+  } else if (eVal > 1 + EPS_E) {
+    const A = q_m / (eVal - 1);
+    const n = Math.sqrt(mu / (A * A * A));
+    const M = n * dt;
+    const H = solveKeplerHyperbolic(M, eVal);
+
+    const coshH = Math.cosh(H);
+    const sinhH = Math.sinh(H);
+    const root = Math.sqrt(eVal * eVal - 1);
+    const denom = eVal * coshH - 1;
+
+    const x = A * (eVal - coshH);
+    const y = A * root * sinhH;
+
+    const Hdot = n / denom;
+    const vx = -A * sinhH * Hdot;
+    const vy =  A * root * coshH * Hdot;
+
+    r_pf = new BABYLON.Vector3(x, y, 0);
+    v_pf = new BABYLON.Vector3(vx, vy, 0);
+
+  } else {
+    const D = solveBarkerParabolic(dt, q_m, mu);
+    const C = Math.sqrt((2 * q_m * q_m * q_m) / mu);
+
+    const x = q_m * (1 - D * D);
+    const y = 2 * q_m * D;
+
+    const Ddot = 1 / (C * (1 + D * D));
+    const vx = -2 * q_m * D * Ddot;
+    const vy =  2 * q_m * Ddot;
+
+    r_pf = new BABYLON.Vector3(x, y, 0);
+    v_pf = new BABYLON.Vector3(vx, vy, 0);
+  }
+
+  return { r_pf, v_pf };
+}
 
 function cometStateAtJD(jd) {
-  const mu   = GMsun;
-  const q_m  = q;
-  const dt   = (jd - t0) * SECONDS_PER_DAY;
-  const r0_pf = new BABYLON.Vector3(q_m, 0, 0);
-  const v0_pf = new BABYLON.Vector3(0, Math.sqrt(mu * (1 + e) / q_m), 0);
-  const r0 = rotPQWtoIJK(r0_pf, Omega, i, omega);
-  const v0 = rotPQWtoIJK(v0_pf, Omega, i, omega);
-  const { r, v } = keplerUniversalPropagate(r0, v0, dt, mu);
+  const { r_pf, v_pf } = stateFromPerihelionElementsPQW(jd);
+  const r = rotPQWtoIJK(r_pf, Omega, i, omega);
+  const v = rotPQWtoIJK(v_pf, Omega, i, omega);
+
   return {
     r_scene:       r.scale(SCALE),
     v_scene_per_s: v.scale(SCALE),
