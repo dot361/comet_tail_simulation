@@ -1,25 +1,26 @@
 
 let e, q, a, i, omega, Omega, t0;
 let orbitLine = null;
+let cometOrbitVisible = true;
 let customCometLabel;
 let currentCometSource = "user";
-let currentCometName = null;
-let fadeHalfLifeEDays = 1500;
-let visMode = 'none';
-let velocityScale = 1.0;
-let activityN = 2;
-let activityK = 1;
+let currentCometName   = null;
+let fadeHalfLifeEDays  = 1500;
+let visMode            = 'none';
+let velocityScale      = 1.0;
+let activityN          = 2;
+let activityK          = 1;
 
-const eccentricityInput  = document.getElementById("eccentricityInput");
-const perihelionInput = document.getElementById("perihelionInput");
-const inclinationInput = document.getElementById("inclinationInput");
-const longitudeAscendingNodeInput = document.getElementById("longitudeAscendingNodeInput");
-const argumentPerihelionInput = document.getElementById("argumentPerihelionInput");
-const perihelionDateInput = document.getElementById("perihelionDateInput");
-const activityHalfLifeInput = document.getElementById("activityHalfLifeInput");
-const activityExponentInput = document.getElementById("activityExponentInput");
-const activityScaleInput = document.getElementById("activityScaleInput");
-const visModeSelect = document.getElementById("visModeSelect");
+const eccentricityInput            = document.getElementById("eccentricityInput");
+const perihelionInput              = document.getElementById("perihelionInput");
+const inclinationInput             = document.getElementById("inclinationInput");
+const longitudeAscendingNodeInput  = document.getElementById("longitudeAscendingNodeInput");
+const argumentPerihelionInput      = document.getElementById("argumentPerihelionInput");
+const perihelionDateInput          = document.getElementById("perihelionDateInput");
+const activityHalfLifeInput        = document.getElementById("activityHalfLifeInput");
+const activityExponentInput        = document.getElementById("activityExponentInput");
+const activityScaleInput           = document.getElementById("activityScaleInput");
+const visModeSelect                = document.getElementById("visModeSelect");
 
 function solveKeplerElliptic(M, eVal) {
   M = Math.atan2(Math.sin(M), Math.cos(M));
@@ -32,6 +33,7 @@ function solveKeplerElliptic(M, eVal) {
     E += dE;
     if (Math.abs(dE) < 1e-13) break;
   }
+
   return E;
 }
 
@@ -71,6 +73,7 @@ function solveBarkerParabolic(dt, q_m, mu) {
     D += dD;
     if (Math.abs(dD) < 1e-13) break;
   }
+
   return D;
 }
 
@@ -134,7 +137,7 @@ function stateFromPerihelionElementsPQW(jd) {
 
     const Ddot = 1 / (C * (1 + D * D));
     const vx = -2 * q_m * D * Ddot;
-    const vy = 2 * q_m * Ddot;
+    const vy =  2 * q_m * Ddot;
 
     r_pf = new BABYLON.Vector3(x, y, 0);
     v_pf = new BABYLON.Vector3(vx, vy, 0);
@@ -149,9 +152,9 @@ function cometStateAtJD(jd) {
   const v = rotPQWtoIJK(v_pf, Omega, i, omega);
 
   return {
-    r_scene: r.scale(SCALE),
+    r_scene:       r.scale(SCALE),
     v_scene_per_s: v.scale(SCALE),
-    rh_AU: r.length() / AU
+    rh_AU:         r.length() / AU
   };
 }
 
@@ -168,12 +171,12 @@ function drawOrbit(segments = 800) {
   if (e < 1) {
     nuMin = -Math.PI; nuMax = Math.PI;
   } else if (Math.abs(e - 1) < 1e-12) {
-    const pPar = 2 * q;
-    const c = Math.min(1, Math.max(-1, (pPar / RMAX) - 1));
+    const pPar  = 2 * q;
+    const c     = Math.min(1, Math.max(-1, (pPar / RMAX) - 1));
     const nuCap = Math.acos(c);
-    const eps = 1e-3;
+    const eps   = 1e-3;
     nuMin = -Math.min(nuCap, Math.PI - eps);
-    nuMax = Math.min(nuCap, Math.PI - eps);
+    nuMax =  Math.min(nuCap, Math.PI - eps);
   } else {
     const nuAsym  = Math.acos(-1 / e);
     const cNeeded = (p / RMAX) - 1;
@@ -185,7 +188,7 @@ function drawOrbit(segments = 800) {
   }
 
   for (let j = 0; j <= segments; j++) {
-    const nu = nuMin + (nuMax - nuMin) * (j / segments);
+    const nu    = nuMin + (nuMax - nuMin) * (j / segments);
     const denom = 1 + e * Math.cos(nu);
     if (denom <= 0) continue;
     const r = (Math.abs(e - 1) < 1e-12) ? (2 * q) / denom : p / denom;
@@ -195,19 +198,21 @@ function drawOrbit(segments = 800) {
     const y_orb = r * Math.sin(nu);
     const cO = Math.cos(Omega), sO = Math.sin(Omega);
     const co = Math.cos(omega), so = Math.sin(omega);
-    const ci = Math.cos(i), si = Math.sin(i);
-    const xp = co*x_orb - so*y_orb;
-    const yp = so*x_orb + co*y_orb;
-    const X = cO*xp - sO*(ci*yp);
-    const Y = sO*xp + cO*(ci*yp);
-    const Z = si*yp;
+    const ci = Math.cos(i),     si = Math.sin(i);
+    const xp =  co*x_orb - so*y_orb;
+    const yp =  so*x_orb + co*y_orb;
+    const X  =  cO*xp - sO*(ci*yp);
+    const Y  =  sO*xp + cO*(ci*yp);
+    const Z  =  si*yp;
     points.push(new BABYLON.Vector3(X * SCALE, Y * SCALE, Z * SCALE));
   }
 
   orbitLine = BABYLON.MeshBuilder.CreateLines("orbitPath", { points }, scene);
   orbitLine.color = new BABYLON.Color3(0.8, 0.8, 0.8);
   orbitLine.isPickable = false;
+  orbitLine.setEnabled(cometOrbitVisible);
 }
+
 
 // ─── Label helpers ────────────────────────────────────────────────────────────
 
@@ -282,13 +287,13 @@ function updateOrbitParameters() {
   if (orbitLine) orbitLine.dispose();
   drawOrbit();
 
-  baseLifetime = parseFloat(particleLifetimeInput.value);
-  particleCountPerSec = parseFloat(particleCountInput.value) || 1;
-  ejectionSpeedMps = parseFloat(ejectionSpeedInput?.value)  || 0;
-  ejectionGamma = parseFloat(ejectionGammaInput?.value)  ?? 0.5;
-  ejectionKappa = parseFloat(ejectionKappaInput?.value)  ?? -0.5;
-  ejectionExpcos = parseFloat(ejectionExpcosInput?.value) ?? 1.0;
-  particleCountPerSec = Math.max(0.01, particleCountPerSec);
+  baseLifetime         = parseFloat(particleLifetimeInput.value);
+  particleCountPerSec  = parseFloat(particleCountInput.value) || 1;
+  ejectionSpeedMps  = parseFloat(ejectionSpeedInput?.value)  || 0;
+  ejectionGamma     = parseFloat(ejectionGammaInput?.value)  ?? 0.5;
+  ejectionKappa     = parseFloat(ejectionKappaInput?.value)  ?? -0.5;
+  ejectionExpcos    = parseFloat(ejectionExpcosInput?.value) ?? 1.0;
+  particleCountPerSec  = Math.max(0.01, particleCountPerSec);
 
   if (!isFinite(activityN)) activityN = 2;
   if (!isFinite(activityK)) activityK = 1;
@@ -307,16 +312,28 @@ function updateOrbitParameters() {
   resetExposure();
 }
 
+function setCometOrbitVisible(on) {
+  cometOrbitVisible = !!on;
+  if (orbitLine && !orbitLine.isDisposed()) orbitLine.setEnabled(cometOrbitVisible);
+
+  const btn = document.getElementById("toggleOrbitBtn");
+  if (btn) btn.textContent = cometOrbitVisible ? "Hide Comet Orbit" : "Show Comet Orbit";
+}
+
+function toggleCometOrbitVisible() {
+  setCometOrbitVisible(!cometOrbitVisible);
+}
+
 // ─── Initialisation ───────────────────────────────────────────────────────────
 
 function initComet() {
-  e = parseFloat(eccentricityInput.value);
-  q = parseFloat(perihelionInput.value) * AU;
-  a = q / (1 - e);
-  i = parseFloat(inclinationInput.value) * DEG;
+  e     = parseFloat(eccentricityInput.value);
+  q     = parseFloat(perihelionInput.value) * AU;
+  a     = q / (1 - e);
+  i     = parseFloat(inclinationInput.value) * DEG;
   omega = parseFloat(argumentPerihelionInput.value) * DEG;
   Omega = parseFloat(longitudeAscendingNodeInput.value) * DEG;
-  t0 = parseFloat(perihelionDateInput.value);
+  t0    = parseFloat(perihelionDateInput.value);
 
   fadeHalfLifeEDays = parseFloat(activityHalfLifeInput?.value) || 1500;
   activityN = parseFloat(activityExponentInput?.value ?? 2) || 2;
@@ -324,9 +341,8 @@ function initComet() {
 
   drawOrbit();
 
-  document.getElementById("toggleOrbitBtn").addEventListener("click", () => {
-    if (orbitLine) orbitLine.setEnabled(!orbitLine.isEnabled());
-  });
+  document.getElementById("toggleOrbitBtn")?.addEventListener("click", toggleCometOrbitVisible);
+  setCometOrbitVisible(true);
 
   const initialPos = new BABYLON.Vector3(-0.02449938703, -0.07948059791, -0.00387641697);
   const comet = BABYLON.MeshBuilder.CreateSphere("comet", { diameter: 0.2 }, scene);
@@ -339,6 +355,7 @@ function initComet() {
 
   customCometLabel = ensureCometLabel(cometMesh, userModelLabel(e, a / AU, q / AU, i / DEG));
 
+  // Preset label finders
   const PRESET_FINDERS = [
     { key: "67p",     id: "67P",     name: "67P/Churyumov–Gerasimenko" },
     { key: "c2024e1", id: "C2024E1", name: "C/2024 E1" },

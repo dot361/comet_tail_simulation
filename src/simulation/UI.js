@@ -53,6 +53,13 @@ function initUI() {
 
   updateDiagnosticButtonState();
 
+  document.getElementById("viewXBtn")?.addEventListener("click", () => setViewAxis("X"));
+  document.getElementById("viewYBtn")?.addEventListener("click", () => setViewAxis("Y"));
+  document.getElementById("viewZBtn")?.addEventListener("click", () => setViewAxis("Z"));
+  document.getElementById("togglePlanetOrbitsBtn")?.addEventListener("click", togglePlanetOrbitsVisible);
+  document.getElementById("togglePlanetsBtn")?.addEventListener("click", togglePlanetsVisible);
+  document.getElementById("toggleSunBtn")?.addEventListener("click", toggleSunVisible);
+
   (function setupShortcuts() {
     function isTypingTarget(el) {
       return el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
@@ -96,8 +103,7 @@ function initUI() {
         case "z": case "Z": ev.preventDefault(); setViewAxis("Z"); return;
         case "o": case "O":
           ev.preventDefault();
-          if (orbitLine) orbitLine.setEnabled(!orbitLine.isEnabled());
-          else document.getElementById("toggleOrbitBtn")?.click();
+          document.getElementById("toggleOrbitBtn")?.click();
           return;
         case "l": case "L":
           ev.preventDefault();

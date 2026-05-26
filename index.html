@@ -637,23 +637,22 @@
     <details class="ui-group">
       <summary>Camera</summary>
       <div class="group-content">
-        <label for="camXYZInput">Lock position (x, y, z)</label>
-        <input type="text" id="camXYZInput" value="1, 1, 1" placeholder="e.g. 1, 0, 0.2" />
 
-        <label for="camUnitSelect">Units</label>
-        <select id="camUnitSelect">
-          <option value="AU" selected>AU</option>
-          <option value="m">meters</option>
-          <option value="km">kilometers</option>
-        </select>
-
-        <button id="lockCamPosBtn">Lock camera position</button>
-        <button id="lockEarthBtn">Lock camera to Earth</button>
         <button id="toggleFocusBtn">Focus on Comet</button>
         <button id="updateViewBtn" disabled>Update Position</button>
 
         <hr style="border:0;border-top:1px solid rgba(255,255,255,0.16);margin:10px 0;">
-        <label for="observerModeSelect">Observer / telescope position</label>
+        <label for="observerPresetSelect">Space telescope preset</label>
+        <select id="observerPresetSelect">
+          <option value="manual" selected>Manual / no preset</option>
+          <option value="hubble">Hubble Space Telescope — LEO approx.</option>
+          <option value="jwst">JWST — Sun–Earth L2 approx.</option>
+          <option value="neowise">NEOWISE / WISE — historical SSO approx.</option>
+          <option value="soho">SOHO — Sun–Earth L1 approx.</option>
+          <option value="stereoA">STEREO-A — heliocentric approx.</option>
+        </select>
+
+        <label for="observerModeSelect">Manual observer position</label>
         <select id="observerModeSelect">
           <option value="earth" selected>Earth (geocentric)</option>
           <option value="j2000">Custom J2000 position</option>
@@ -737,8 +736,16 @@
           <label for="velocitySlider">Simulation speed: <span id="velocityValue">1</span>×</label>
           <input type="range" id="velocitySlider" min="0" max="93" value="0" step="1">
         </div>
-        <button id="toggleOrbitBtn">Toggle Orbit Visibility</button>
-        <button id="toggleGridBtn">Hide Grid</button>
+        <div class="view-axis-buttons" aria-label="Camera axis views">
+          <button id="viewXBtn" type="button">X View</button>
+          <button id="viewYBtn" type="button">Y View</button>
+          <button id="viewZBtn" type="button">Z View</button>
+        </div>
+        <button id="toggleOrbitBtn" type="button">Hide Comet Orbit</button>
+        <button id="togglePlanetOrbitsBtn" type="button">Hide Planet Orbits</button>
+        <button id="togglePlanetsBtn" type="button">Hide Planets</button>
+        <button id="toggleSunBtn" type="button">Hide Sun</button>
+        <button id="toggleGridBtn" type="button">Hide Grid</button>
       </div>
     </details>
 
@@ -784,54 +791,6 @@
       cursor: pointer;
       transition: background-color 0.3s ease, color 0.3s ease;
     ">Pause</button>
-  </div>
-
-  <div id="axisControl" style="
-    position: fixed;
-    top: 170px;
-    right: 20px;
-    z-index: 15;
-    padding: 6px;
-    border-radius: 6px;
-    display: flex;
-    flex-direction: row;
-    gap: 10px;
-    font-family: sans-serif;
-    background: transparent;
-    width: max-content;
-  ">
-    <button style="
-      background: none;
-      border: 1.5px solid #ccc;
-      color: #eee;
-      padding: 6px 12px;
-      border-radius: 5px;
-      cursor: pointer;
-      transition: background-color 0.3s ease, color 0.3s ease;
-      width: auto;
-    " onclick="setViewAxis('X')">X</button>
-
-    <button style="
-      background: none;
-      border: 1.5px solid #ccc;
-      color: #eee;
-      padding: 6px 12px;
-      border-radius: 5px;
-      cursor: pointer;
-      transition: background-color 0.3s ease, color 0.3s ease;
-      width: auto;
-    " onclick="setViewAxis('Y')">Y</button>
-
-    <button style="
-      background: none;
-      border: 1.5px solid #ccc;
-      color: #eee;
-      padding: 6px 12px;
-      border-radius: 5px;
-      cursor: pointer;
-      transition: background-color 0.3s ease, color 0.3s ease;
-      width: auto;
-    " onclick="setViewAxis('Z')">Z</button>
   </div>
 
   <div id="cometButtons" style="
@@ -1071,7 +1030,6 @@
       const infoPanel = document.getElementById("infoPanel");
 
       const uiOverlay = document.getElementById("uiOverlay");
-      const axisControl = document.getElementById("axisControl");
       const cometButtons = document.getElementById("cometButtons");
       const pauseContainer = document.getElementById("pauseContainer");
       const statusContainer = document.getElementById("statusContainer");
@@ -1146,7 +1104,6 @@
       controlsPanel.appendChild(wrapSection("Date", timelineWrapper));
 
       viewPanel.appendChild(wrapSection("Pause", pauseContainer));
-      viewPanel.appendChild(wrapSection("Axis", axisControl));
       viewPanel.appendChild(wrapSection("Status", statusContainer));
       viewPanel.appendChild(wrapSection("Beta curve", betaCurvePanel));
 
@@ -1159,7 +1116,6 @@
 
       [
         uiOverlay,
-        axisControl,
         cometButtons,
         pauseContainer,
         statusContainer,
@@ -1170,11 +1126,6 @@
         fpsCounter,
         timelineWrapper
       ].forEach(resetMovedStyles);
-
-      axisControl.style.display = "flex";
-      axisControl.style.flexDirection = "row";
-      axisControl.style.flexWrap = "wrap";
-      axisControl.style.gap = "10px";
 
       cometButtons.style.display = "flex";
       cometButtons.style.flexDirection = "column";

@@ -3,6 +3,9 @@
 let auGridMinor    = null;
 let auGridMajor    = null;
 let isAUGridVisible = true;
+let sunMesh = null;
+let sunGlow = null;
+let isSunVisible = true;
 let ui;
 
 let gridObserver = null;
@@ -113,6 +116,19 @@ function setAUGridVisible(on) {
   if (toggleGridBtn) toggleGridBtn.textContent = isAUGridVisible ? "Hide Grid" : "Show Grid";
 }
 
+function setSunVisible(on) {
+  isSunVisible = !!on;
+  if (sunMesh && !sunMesh.isDisposed()) sunMesh.setEnabled(isSunVisible);
+  if (sunGlow) sunGlow.intensity = isSunVisible ? sunGlow._lastVisibleIntensity ?? 0.05 : 0;
+
+  const btn = document.getElementById("toggleSunBtn");
+  if (btn) btn.textContent = isSunVisible ? "Hide Sun" : "Show Sun";
+}
+
+function toggleSunVisible() {
+  setSunVisible(!isSunVisible);
+}
+
 function addLabel(mesh, text, opts = {}) {
   const rect = new BABYLON.GUI.Rectangle();
   rect.background = "transparent";
@@ -174,19 +190,22 @@ function initWorld() {
 
   ui = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("ui");
 
-  const sun = BABYLON.MeshBuilder.CreateSphere("sun", { diameter: 0.8 }, scene);
+  sunMesh = BABYLON.MeshBuilder.CreateSphere("sun", { diameter: 0.8 }, scene);
   const sunMat = new BABYLON.StandardMaterial("sunMat", scene);
   sunMat.emissiveColor = new BABYLON.Color3(1, 1, 0.5);
-  sun.material = sunMat;
+  sunMesh.material = sunMat;
 
-  const glow = new BABYLON.GlowLayer("glow", scene);
-  glow.referenceMeshToUseItsOwnMaterial(sun);
-  glow.intensity = 0.05;
+  sunGlow = new BABYLON.GlowLayer("glow", scene);
+  sunGlow.referenceMeshToUseItsOwnMaterial(sunMesh);
+  sunGlow.intensity = 0.05;
   scene.onBeforeRenderObservable.add(() => {
+    if (!isSunVisible || !sunGlow) return;
     const r = camera.radius;
     const t = Math.min(1, Math.max(0, (r - 50) / 400));
-    glow.intensity = 0.08 * (1 - 0.9 * t);
+    sunGlow._lastVisibleIntensity = 0.08 * (1 - 0.9 * t);
+    sunGlow.intensity = sunGlow._lastVisibleIntensity;
   });
+  setSunVisible(true);
 
   createStarfield();
 }

@@ -10,12 +10,10 @@ let observerViewActive = false;
 let observerViewState  = null;
 let lastObserverMetadata = "";
 
-const camXYZInput   = document.getElementById("camXYZInput");
-const camUnitSelect = document.getElementById("camUnitSelect");
-const lockCamPosBtn = document.getElementById("lockCamPosBtn");
 const lockEarthBtn  = document.getElementById("lockEarthBtn");
 const toggleFocusBtn = document.getElementById("toggleFocusBtn");
 
+const observerPresetSelect     = document.getElementById("observerPresetSelect");
 const observerModeSelect       = document.getElementById("observerModeSelect");
 const observerXYZInput         = document.getElementById("observerXYZInput");
 const observerUnitSelect       = document.getElementById("observerUnitSelect");
@@ -31,6 +29,61 @@ const saveObserverScreenshotBtn = document.getElementById("saveObserverScreensho
 const observerInfo             = document.getElementById("observerInfo");
 const observerReticle          = document.getElementById("observerReticle");
 const observerStatus           = document.getElementById("observerStatus");
+
+const SPACE_TELESCOPE_PRESETS = {
+  manual: null,
+  hubble: {
+    name: "Hubble Space Telescope",
+    shortName: "Hubble",
+    type: "earthOrbit",
+    altitudeKm: 540,
+    inclinationDeg: 28.5,
+    periodMin: 95.4,
+    raanDeg: 32,
+    phaseDeg: 15,
+    fovDeg: 0.05,
+    note: "Approximate low-Earth orbit position; not a live TLE/ephemeris."
+  },
+  jwst: {
+    name: "James Webb Space Telescope",
+    shortName: "JWST",
+    type: "earthLine",
+    point: "L2",
+    distanceKm: 1_500_000,
+    fovDeg: 0.07,
+    note: "Approximate Sun–Earth L2 viewpoint, 1.5 million km anti-sunward from Earth."
+  },
+  neowise: {
+    name: "NEOWISE / WISE",
+    shortName: "NEOWISE",
+    type: "earthOrbit",
+    altitudeKm: 525,
+    inclinationDeg: 97.5,
+    periodMin: 94.5,
+    raanDeg: 90,
+    phaseDeg: 270,
+    fovDeg: 47 / 60,
+    note: "Historical approximate sun-synchronous polar orbit. NEOWISE ended operations in 2024."
+  },
+  soho: {
+    name: "Solar and Heliospheric Observatory",
+    shortName: "SOHO",
+    type: "earthLine",
+    point: "L1",
+    distanceKm: 1_500_000,
+    fovDeg: 5.0,
+    note: "Approximate Sun–Earth L1 viewpoint, 1.5 million km sunward from Earth."
+  },
+  stereoA: {
+    name: "STEREO-A",
+    shortName: "STEREO-A",
+    type: "heliocentricOffset",
+    longitudeOffsetDeg: -20,
+    radialScale: 0.96,
+    fovDeg: 1.0,
+    note: "Approximate heliocentric viewpoint offset from Earth. Use Horizons/SPICE for publication-grade work."
+  }
+};
 
 function initCamera() {
   camera = new BABYLON.ArcRotateCamera("orbitCamera", Math.PI / 2, Math.PI / 3, 100, BABYLON.Vector3.Zero(), scene);
@@ -53,22 +106,6 @@ function initCamera() {
   lastCameraTarget = camera.target.clone();
   lastCameraRadius = camera.radius;
 
-  lockCamPosBtn.onclick = () => {
-    if (isCamPosLocked && lockMode === "j2000") {
-      unlockCameraPosition();
-    } else {
-      lockCameraPositionToJ2000();
-    }
-  };
-
-  lockEarthBtn.onclick = () => {
-    if (isCamPosLocked && lockMode === "earth") {
-      unlockCameraPosition();
-    } else {
-      lockCameraToEarth();
-    }
-  };
-
   toggleFocusBtn.onclick = () => {
     if (observerViewActive) {
       setObserverTargetMode("comet");
@@ -87,7 +124,7 @@ function initCamera() {
   saveObserverScreenshotBtn?.addEventListener("click", saveObserverScreenshot);
 
   for (const el of [
-    observerModeSelect, observerXYZInput, observerUnitSelect, observerTargetSelect,
+    observerPresetSelect, observerModeSelect, observerXYZInput, observerUnitSelect, observerTargetSelect,
     observerRaInput, observerDecInput, observerFovInput, observerRollInput
   ]) {
     el?.addEventListener("input", () => {
@@ -97,6 +134,11 @@ function initCamera() {
       if (observerViewActive) applyObserverViewFromUI({ keepState: true });
     });
   }
+
+  observerPresetSelect?.addEventListener("change", () => {
+    applyPresetDefaultsToUI(observerPresetSelect.value);
+    if (observerViewActive) applyObserverViewFromUI({ keepState: true });
+  });
 
   scene.onBeforeRenderObservable.add(() => {
     if (observerViewActive) {
@@ -155,49 +197,14 @@ function disposeLockedCamera() {
   }
 }
 
-function lockCameraPositionToJ2000() {
-  const v = parseVec3FromText(camXYZInput?.value ?? "");
-  const unit = camUnitSelect.value;
-  if (!v) { console.warn("Invalid camera coordinates. Use: x, y, z"); return; }
-
-  if (observerViewActive) exitObserverView();
-
-  const posScene = j2000ToSceneUnits(v.x, v.y, v.z, unit, AU, SCALE);
-  savedArcRotateState = saveArcRotateState();
-
-  const lookTarget = camera.lockedTarget?.position ?? camera.target;
-  createLockedCameraAtPosition(posScene, lookTarget);
-
-  isCamPosLocked = true;
-  lockMode = "j2000";
-  autoTrackCometWhileLocked = false;
-  lockCamPosBtn.textContent = "Unlock camera position";
-  lockEarthBtn.textContent  = "Lock to Earth";
-  updateFocusButtonLabel();
-}
-
-function lockCameraToEarth() {
-  if (!earthMesh) { console.warn("Earth mesh not available"); return; }
-  if (observerViewActive) exitObserverView();
-
-  savedArcRotateState = saveArcRotateState();
-  const lookTarget = camera.lockedTarget?.position ?? camera.target;
-  createLockedCameraAtPosition(earthMesh.position, lookTarget);
-
-  isCamPosLocked = true;
-  lockMode = "earth";
-  autoTrackCometWhileLocked = false;
-  lockCamPosBtn.textContent = "Lock camera position";
-  lockEarthBtn.textContent  = "Unlock Earth lock";
-  updateFocusButtonLabel();
-}
-
 function unlockCameraPosition() {
   if (observerViewActive) {
     exitObserverView();
     return;
   }
+
   disposeLockedCamera();
+
   if (savedArcRotateState) {
     camera.alpha  = savedArcRotateState.alpha;
     camera.beta   = savedArcRotateState.beta;
@@ -205,13 +212,15 @@ function unlockCameraPosition() {
     camera.setTarget(savedArcRotateState.target);
     camera.lockedTarget = savedArcRotateState.lockedTarget ?? null;
   }
+
   scene.activeCamera = camera;
 
   isCamPosLocked = false;
   lockMode = "none";
   autoTrackCometWhileLocked = false;
-  lockCamPosBtn.textContent = "Lock camera position";
-  lockEarthBtn.textContent  = "Lock to Earth";
+
+  if (lockEarthBtn) lockEarthBtn.textContent = "Lock to Earth";
+
   updateFocusButtonLabel();
 }
 
@@ -248,8 +257,8 @@ function setViewAxis(axis) {
   if (isCameraFocused || observerViewActive) return;
   const distance = camera.radius;
   switch (axis) {
-    case 'X': camera.alpha = 0; camera.beta = Math.PI / 2; break;
-    case 'Y': camera.alpha = 0; camera.beta = 0.0001;       break;
+    case 'X': camera.alpha = 0;          camera.beta = Math.PI / 2; break;
+    case 'Y': camera.alpha = 0;          camera.beta = 0.0001;       break;
     case 'Z': camera.alpha = Math.PI / 2; camera.beta = Math.PI / 2; break;
   }
   camera.radius = distance;
@@ -260,6 +269,87 @@ function setViewAxis(axis) {
 function setObserverTargetMode(mode) {
   if (observerTargetSelect) observerTargetSelect.value = mode;
   if (observerViewActive) applyObserverViewFromUI({ keepState: true });
+}
+
+function applyPresetDefaultsToUI(presetId) {
+  const preset = SPACE_TELESCOPE_PRESETS[presetId];
+  if (!preset) return;
+  if (observerFovInput && Number.isFinite(preset.fovDeg)) {
+    observerFovInput.value = String(Number(preset.fovDeg.toFixed(4)));
+  }
+  if (observerTargetSelect && observerTargetSelect.value !== "radec") {
+    observerTargetSelect.value = "comet";
+  }
+}
+
+function getEarthPositionScene() {
+  return earthMesh?.position?.clone?.() ?? getPlanetPosition(simulationTimeJD, earthEl);
+}
+
+function earthCenteredEqToScene(offsetMetersEq) {
+  const ecl = eqToEcl(offsetMetersEq);
+  return ecl.scale(SCALE);
+}
+
+function getEarthOrbitPresetPosition(preset) {
+  const earthPos = getEarthPositionScene();
+  const altitudeM = (preset.altitudeKm || 0) * 1000;
+  const radiusM = (PLANET_RADII_KM.Earth * 1000) + altitudeM;
+  const periodDays = Math.max(1e-9, (preset.periodMin || 95) / (24 * 60));
+  const phase = ((simulationTimeJD - baseJD) / periodDays) * 2 * Math.PI + (preset.phaseDeg || 0) * DEG;
+  const inc = (preset.inclinationDeg || 0) * DEG;
+  const raan = (preset.raanDeg || 0) * DEG;
+
+  const xOrb = radiusM * Math.cos(phase);
+  const yOrb = radiusM * Math.sin(phase);
+
+  const cosO = Math.cos(raan), sinO = Math.sin(raan);
+  const cosI = Math.cos(inc), sinI = Math.sin(inc);
+
+  const xEq = cosO * xOrb - sinO * cosI * yOrb;
+  const yEq = sinO * xOrb + cosO * cosI * yOrb;
+  const zEq = sinI * yOrb;
+
+  return earthPos.add(earthCenteredEqToScene(new BABYLON.Vector3(xEq, yEq, zEq)));
+}
+
+function getEarthLinePresetPosition(preset) {
+  const earthPos = getEarthPositionScene();
+  const earthDir = earthPos.lengthSquared() > 0 ? earthPos.normalize() : new BABYLON.Vector3(1, 0, 0);
+  const sign = preset.point === "L1" ? -1 : 1;
+  return earthPos.add(earthDir.scale(sign * (preset.distanceKm || 0) * 1000 * SCALE));
+}
+
+function getHeliocentricOffsetPresetPosition(preset) {
+  const earthPos = getEarthPositionScene();
+  const angle = (preset.longitudeOffsetDeg || 0) * DEG;
+  const radialScale = preset.radialScale || 1;
+  const cosA = Math.cos(angle), sinA = Math.sin(angle);
+  return new BABYLON.Vector3(
+    radialScale * (earthPos.x * cosA - earthPos.y * sinA),
+    radialScale * (earthPos.x * sinA + earthPos.y * cosA),
+    earthPos.z
+  );
+}
+
+function getPresetObserverPosition(presetId) {
+  const preset = SPACE_TELESCOPE_PRESETS[presetId];
+  if (!preset) return null;
+  if (preset.type === "earthOrbit") return getEarthOrbitPresetPosition(preset);
+  if (preset.type === "earthLine") return getEarthLinePresetPosition(preset);
+  if (preset.type === "heliocentricOffset") return getHeliocentricOffsetPresetPosition(preset);
+  return null;
+}
+
+function getObserverModeLabel(state = observerViewState) {
+  const preset = SPACE_TELESCOPE_PRESETS[state?.presetId];
+  if (preset) return `${preset.shortName} preset`;
+  return state?.mode === "earth" ? "Earth/geocentric" : "Custom J2000";
+}
+
+function getObserverPresetNote(state = observerViewState) {
+  const preset = SPACE_TELESCOPE_PRESETS[state?.presetId];
+  return preset?.note || "";
 }
 
 function readObserverStateFromUI() {
@@ -275,6 +365,7 @@ function readObserverStateFromUI() {
   }
 
   return {
+    presetId: observerPresetSelect?.value ?? "manual",
     mode: observerModeSelect?.value ?? "earth",
     targetMode: observerTargetSelect?.value ?? "comet",
     fovDeg,
@@ -287,7 +378,7 @@ function readObserverStateFromUI() {
 
 function applyObserverViewFromUI() {
   const next = readObserverStateFromUI();
-  if (next.mode === "j2000" && !next.customPosition) {
+  if (next.presetId === "manual" && next.mode === "j2000" && !next.customPosition) {
     console.warn("Invalid observer coordinates. Use: x, y, z");
     if (observerInfo) observerInfo.textContent = "Invalid observer coordinates. Use: x, y, z";
     return;
@@ -304,15 +395,16 @@ function applyObserverViewFromUI() {
 
   observerViewState = next;
   updateObserverCamera();
-  lockCamPosBtn.textContent = "Lock camera position";
-  lockEarthBtn.textContent  = "Lock to Earth";
+  if (lockEarthBtn) lockEarthBtn.textContent = "Lock to Earth";
   updateFocusButtonLabel();
   observerReticle?.classList.add("active");
   observerStatus?.classList.add("active");
 }
 
 function getObserverPosition(state = observerViewState) {
-  if (state?.mode === "earth") return earthMesh?.position?.clone?.() ?? BABYLON.Vector3.Zero();
+  const presetPos = getPresetObserverPosition(state?.presetId);
+  if (presetPos) return presetPos;
+  if (state?.mode === "earth") return getEarthPositionScene();
   return state?.customPosition?.clone?.() ?? BABYLON.Vector3.Zero();
 }
 
@@ -336,7 +428,7 @@ function updateObserverCamera() {
   lockedCam.minZ = 0.000001;
   lockedCam.maxZ = 1e10;
   lockedCam.setTarget(target);
-  lockedCam.rotation.z += observerViewState.rollDeg * DEG;
+  lockedCam.rotation.z = observerViewState.rollDeg * DEG;
 
   updateObserverMetadata(pos, target);
 }
@@ -352,8 +444,9 @@ function updateObserverMetadata(observerPos, target) {
   const distanceAU = BABYLON.Vector3.Distance(observerPos, cometMesh.position) / (AU * SCALE);
   const date = jdToDateString(simulationTimeJD);
   const fovH = observerViewState.fovDeg * (engine.getRenderWidth(true) / Math.max(1, engine.getRenderHeight(true)));
-  const modeLabel = observerViewState.mode === "earth" ? "Earth/geocentric" : "Custom J2000";
+  const modeLabel = getObserverModeLabel(observerViewState);
   const targetLabel = observerViewState.targetMode === "comet" ? "Comet nucleus" : "Manual RA/Dec";
+  const presetNote = getObserverPresetNote(observerViewState);
 
   lastObserverMetadata = [
     `Date UTC: ${date} (JD ${simulationTimeJD.toFixed(5)})`,
@@ -364,8 +457,9 @@ function updateObserverMetadata(observerPos, target) {
     `Distance to comet: ${distanceAU.toFixed(6)} AU`,
     `FOV: ${observerViewState.fovDeg.toFixed(3)}° vertical × ${fovH.toFixed(3)}° horizontal`,
     `Roll: ${observerViewState.rollDeg.toFixed(2)}°`,
+    presetNote ? `Preset note: ${presetNote}` : null,
     `Scene scale: ${SCALE} scene units per meter`
-  ].join("\n");
+  ].filter(Boolean).join("\n");
 
   if (observerInfo) observerInfo.textContent = lastObserverMetadata;
   if (observerStatus) {
@@ -377,8 +471,8 @@ function exitObserverView() {
   if (!observerViewActive) return;
   disposeLockedCamera();
   if (savedArcRotateState) {
-    camera.alpha = savedArcRotateState.alpha;
-    camera.beta = savedArcRotateState.beta;
+    camera.alpha  = savedArcRotateState.alpha;
+    camera.beta   = savedArcRotateState.beta;
     camera.radius = savedArcRotateState.radius;
     camera.setTarget(savedArcRotateState.target);
     camera.lockedTarget = savedArcRotateState.lockedTarget ?? null;
@@ -392,8 +486,7 @@ function exitObserverView() {
   observerReticle?.classList.remove("active");
   observerStatus?.classList.remove("active");
   if (observerInfo) observerInfo.textContent = "Telescope view is not active.";
-  lockCamPosBtn.textContent = "Lock camera position";
-  lockEarthBtn.textContent = "Lock to Earth";
+  if (lockEarthBtn) lockEarthBtn.textContent = "Lock to Earth";
   updateFocusButtonLabel();
 }
 
@@ -428,6 +521,7 @@ function isCanvasMostlyBlank(canvasToCheck) {
     }
     return true;
   } catch (err) {
+    // If the browser blocks probing, do not treat it as blank.
     return false;
   }
 }
@@ -475,11 +569,14 @@ async function saveObserverScreenshot() {
   if (saveObserverScreenshotBtn) saveObserverScreenshotBtn.textContent = "Saving…";
 
   try {
+    // Render a fresh frame and wait for the browser to present it before reading the canvas.
     scene.render();
     await sleepFrame();
 
     let tmp = makeScreenshotCanvasFromSource(source);
 
+    // Some browser/GPU combinations produce a valid PNG that contains only a cleared buffer.
+    // In that case, use Babylon's render-target screenshot path as a fallback.
     if (isCanvasMostlyBlank(tmp) && BABYLON.Tools?.CreateScreenshotUsingRenderTargetAsync && scene.activeCamera) {
       const size = { width: engine.getRenderWidth(true), height: engine.getRenderHeight(true) };
       const dataUrl = await BABYLON.Tools.CreateScreenshotUsingRenderTargetAsync(engine, scene.activeCamera, size);

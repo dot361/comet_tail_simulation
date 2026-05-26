@@ -1,6 +1,9 @@
 // ─── Planet setup ─────────────────────────────────────────────────────────────
 
-let PLANET_ELTS, planetColors, planets, earthEl, earthMesh;
+let PLANET_ELTS, planetColors, planets, earthEl, earthMesh, earthLabel;
+let planetOrbitMeshes = [];
+let planetOrbitsVisible = true;
+let planetsVisible = true;
 
 function initPlanets() {
   PLANET_ELTS = PLANET_ELTS_DEG.map(([name, a, e, iDeg, OmegaDeg, varpiDeg, LDeg]) => {
@@ -30,6 +33,7 @@ function initPlanets() {
   };
 
   planets = [];
+  planetOrbitMeshes = [];
 
   for (const el of PLANET_ELTS) {
     if (el.name === "Earth") continue;
@@ -58,6 +62,46 @@ function initPlanets() {
   earthMesh.material = earthMat;
   earthMesh.position = getPlanetPosition(simulationTimeJD, earthEl);
 
-  addLabel(earthMesh, "Earth", { color: planetColors.Earth.toHexString(), offsetX: 18, offsetY: -18 });
+  earthLabel = addLabel(earthMesh, "Earth", { color: planetColors.Earth.toHexString(), offsetX: 18, offsetY: -18 });
   drawPlanetOrbit(scene, earthEl, 1200, planetColors.Earth);
+
+  setPlanetOrbitsVisible(planetOrbitsVisible);
+  setPlanetsVisible(planetsVisible);
 }
+
+function setPlanetOrbitsVisible(on) {
+  planetOrbitsVisible = !!on;
+
+  for (const orbit of planetOrbitMeshes) {
+    if (orbit && !orbit.isDisposed()) {
+      orbit.setEnabled(planetOrbitsVisible);
+    }
+  }
+
+  const btn = document.getElementById("togglePlanetOrbitsBtn");
+  if (btn) btn.textContent = planetOrbitsVisible ? "Hide Planet Orbits" : "Show Planet Orbits";
+}
+
+function togglePlanetOrbitsVisible() {
+  setPlanetOrbitsVisible(!planetOrbitsVisible);
+}
+
+function setPlanetsVisible(on) {
+  planetsVisible = !!on;
+
+  for (const p of planets) {
+    if (p.mesh && !p.mesh.isDisposed()) p.mesh.setEnabled(planetsVisible);
+    if (p.label) p.label.isVisible = planetsVisible;
+  }
+
+  if (earthMesh && !earthMesh.isDisposed()) earthMesh.setEnabled(planetsVisible);
+  if (earthLabel) earthLabel.isVisible = planetsVisible;
+
+  const btn = document.getElementById("togglePlanetsBtn");
+  if (btn) btn.textContent = planetsVisible ? "Hide Planets" : "Show Planets";
+}
+
+function togglePlanetsVisible() {
+  setPlanetsVisible(!planetsVisible);
+}
+

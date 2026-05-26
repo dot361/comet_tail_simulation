@@ -363,3 +363,16 @@
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
+
+.view-axis-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.view-axis-buttons button {
+  margin-top: 0;
+  width: 100%;
+  padding: 6px 8px;
+}

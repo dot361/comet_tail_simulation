@@ -79,6 +79,13 @@ function drawPlanetOrbit(scene, el, segments = 1024, color = new BABYLON.Color3(
   const line = BABYLON.MeshBuilder.CreateLines("orbit-"+(el.name||"p"), { points: pts }, scene);
   line.color = color;
   line.isPickable = false;
+
+  // Keep a registry of planet orbit meshes so the View panel can hide/show them
+  // without touching the comet orbit.
+  if (typeof planetOrbitMeshes !== "undefined" && Array.isArray(planetOrbitMeshes)) {
+    planetOrbitMeshes.push(line);
+  }
+
   return line;
 }
 

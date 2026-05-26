@@ -1,4 +1,5 @@
 
+// DOM refs grabbed at script-parse time (DOM is ready — scripts are end-of-body)
 const particleLifetimeInput  = document.getElementById("particleLifetimeInput");
 const particleCountInput     = document.getElementById("particleCountInput");
 const ejectionSpeedInput     = document.getElementById("ejectionSpeedInput");
