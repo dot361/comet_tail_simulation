@@ -45,6 +45,9 @@ updateViewBtn.addEventListener("click", () => {
   gpuWriteCursor = 0;
   maxUsed = 0;
   expiryByIndex.fill(0);
+  betaByIndex?.fill?.(0);
+  birthJDByIndex?.fill?.(0);
+  lifeSecondsByIndex?.fill?.(0);
   simSeconds = 0;
   window.emitCarry = 0;
 });

@@ -26,6 +26,12 @@ const applyObserverViewBtn     = document.getElementById("applyObserverViewBtn")
 const exitObserverViewBtn      = document.getElementById("exitObserverViewBtn");
 const copyObserverMetadataBtn  = document.getElementById("copyObserverMetadataBtn");
 const saveObserverScreenshotBtn = document.getElementById("saveObserverScreenshotBtn");
+const exportBetaSizedTelescopeImageBtn = document.getElementById("exportBetaSizedTelescopeImageBtn");
+const betaSizeDensityInput     = document.getElementById("betaSizeDensityInput");
+const betaSizeQprInput         = document.getElementById("betaSizeQprInput");
+const betaSizeMagnifierInput   = document.getElementById("betaSizeMagnifierInput");
+const betaSizeMinPxInput       = document.getElementById("betaSizeMinPxInput");
+const betaSizeMaxPxInput       = document.getElementById("betaSizeMaxPxInput");
 const observerInfo             = document.getElementById("observerInfo");
 const observerReticle          = document.getElementById("observerReticle");
 const observerStatus           = document.getElementById("observerStatus");
@@ -122,6 +128,7 @@ function initCamera() {
   exitObserverViewBtn?.addEventListener("click", exitObserverView);
   copyObserverMetadataBtn?.addEventListener("click", copyObserverMetadata);
   saveObserverScreenshotBtn?.addEventListener("click", saveObserverScreenshot);
+  exportBetaSizedTelescopeImageBtn?.addEventListener("click", exportBetaSizedTelescopeImage);
 
   for (const el of [
     observerPresetSelect, observerModeSelect, observerXYZInput, observerUnitSelect, observerTargetSelect,
@@ -195,6 +202,25 @@ function disposeLockedCamera() {
     lockedCam.dispose();
     lockedCam = null;
   }
+}
+
+function lockCameraToEarth() {
+  if (observerViewActive) exitObserverView();
+  savedArcRotateState = saveArcRotateState();
+  createLockedCameraAtPosition(getEarthPositionScene(), cometMesh?.position ?? camera.target);
+  isCamPosLocked = true;
+  lockMode = "earth";
+  autoTrackCometWhileLocked = false;
+  if (lockEarthBtn) lockEarthBtn.textContent = "Unlock Earth";
+  updateFocusButtonLabel();
+}
+
+function lockCameraPositionToJ2000() {
+  // The old standalone J2000 lock UI was intentionally removed.
+  // Keep this compatibility function so legacy keyboard shortcut L does not crash.
+  if (observerPresetSelect) observerPresetSelect.value = "manual";
+  if (observerModeSelect) observerModeSelect.value = "j2000";
+  applyObserverViewFromUI();
 }
 
 function unlockCameraPosition() {
@@ -560,6 +586,343 @@ function makeScreenshotCanvasFromSource(source) {
   ctx.drawImage(source, 0, 0, tmp.width, tmp.height);
   drawScreenshotOverlays(ctx, tmp.width, tmp.height);
   return tmp;
+}
+
+
+function downloadBlob(filename, blob) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function downloadJSON(filename, data) {
+  downloadBlob(filename, new Blob([JSON.stringify(data, null, 2)], { type: "application/json;charset=utf-8" }));
+}
+
+function safeParseNumber(input, fallback, min = -Infinity, max = Infinity) {
+  const v = parseFloat(input?.value ?? String(fallback));
+  if (!Number.isFinite(v)) return fallback;
+  return Math.max(min, Math.min(max, v));
+}
+
+function readBetaSizeExportSettings() {
+  const densityKgM3 = safeParseNumber(betaSizeDensityInput, 1000, 1, 10000);
+  const qpr = safeParseNumber(betaSizeQprInput, 1, 0.0001, 10);
+  const visibleAngularMagnifier = safeParseNumber(betaSizeMagnifierInput, 1e13, 1, 1e20);
+  const minRenderedRadiusPx = safeParseNumber(betaSizeMinPxInput, 0.6, 0, 1000);
+  const maxRenderedRadiusPx = safeParseNumber(betaSizeMaxPxInput, 35, 0.01, 10000);
+  const betaFloor = 1e-6;
+  return { densityKgM3, qpr, visibleAngularMagnifier, minRenderedRadiusPx, maxRenderedRadiusPx, betaFloor };
+}
+
+function radiusMetersFromBeta(beta, settings) {
+  const betaSafe = Math.max(settings.betaFloor, Math.abs(beta || 0));
+  const densityGcm3 = settings.densityKgM3 / 1000;
+  const radiusUm = (0.57 * settings.qpr) / Math.max(1e-12, densityGcm3 * betaSafe);
+  return radiusUm * 1e-6;
+}
+
+function drawReticleOnly(ctx, width, height) {
+  ctx.strokeStyle = "rgba(255,255,255,0.45)";
+  ctx.lineWidth = Math.max(1, Math.round(width / 1200));
+  const cx = width / 2, cy = height / 2;
+  const len = Math.max(24, height * 0.035);
+  ctx.beginPath();
+  ctx.moveTo(cx - len, cy); ctx.lineTo(cx + len, cy);
+  ctx.moveTo(cx, cy - len); ctx.lineTo(cx, cy + len);
+  ctx.stroke();
+}
+
+function makeBaseSceneScreenshotCanvas(source) {
+  const tmp = document.createElement("canvas");
+  tmp.width = Math.max(1, source.width || engine.getRenderWidth(true));
+  tmp.height = Math.max(1, source.height || engine.getRenderHeight(true));
+  const ctx = tmp.getContext("2d");
+  ctx.drawImage(source, 0, 0, tmp.width, tmp.height);
+  return tmp;
+}
+
+function setGuiControlVisibilityTemporarily(control, visible, restoreList) {
+  if (!control || typeof control.isVisible === "undefined") return;
+  restoreList.push({ control, isVisible: control.isVisible });
+  control.isVisible = visible;
+}
+
+async function makeFreshSceneCanvasWithoutParticleOverlay() {
+  // The β-size export redraws particles itself. The base image should therefore
+  // not contain the normal particle layer OR the bright comet nucleus/glow.
+  // Otherwise the exported PNG gets an artificial halo around the nucleus before
+  // the β-derived particle discs are even drawn.
+  const temporarilyHiddenMeshes = [];
+  const temporarilyHiddenGui = [];
+  const glowState = sunGlow ? { intensity: sunGlow.intensity } : null;
+
+  function hideMeshForExport(mesh) {
+    if (mesh?.isEnabled?.()) {
+      temporarilyHiddenMeshes.push(mesh);
+      mesh.setEnabled(false);
+    }
+  }
+
+  try {
+    if (Array.isArray(particleMeshes)) {
+      for (const mesh of particleMeshes) hideMeshForExport(mesh);
+    }
+
+    // Hide the rendered comet nucleus and its GUI label only for the export base.
+    // The particle positions are still calculated relative to cometMesh.position.
+    hideMeshForExport(cometMesh);
+    setGuiControlVisibilityTemporarily(cometMesh?._cometLabel, false, temporarilyHiddenGui);
+    setGuiControlVisibilityTemporarily(customCometLabel, false, temporarilyHiddenGui);
+
+    // Babylon GlowLayer can brighten emissive scene objects. Disable it during
+    // the base capture so it cannot create a nucleus-looking bloom artifact.
+    if (sunGlow) sunGlow.intensity = 0;
+
+    scene.render();
+    await sleepFrame();
+    let tmp = makeBaseSceneScreenshotCanvas(canvas);
+
+    if (isCanvasMostlyBlank(tmp) && BABYLON.Tools?.CreateScreenshotUsingRenderTargetAsync && scene.activeCamera) {
+      const size = { width: engine.getRenderWidth(true), height: engine.getRenderHeight(true) };
+      const dataUrl = await BABYLON.Tools.CreateScreenshotUsingRenderTargetAsync(engine, scene.activeCamera, size);
+      const img = new Image();
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = dataUrl;
+      });
+      tmp = document.createElement("canvas");
+      tmp.width = size.width;
+      tmp.height = size.height;
+      tmp.getContext("2d").drawImage(img, 0, 0, tmp.width, tmp.height);
+    }
+
+    return tmp;
+  } finally {
+    for (const mesh of temporarilyHiddenMeshes) mesh.setEnabled(true);
+    for (const item of temporarilyHiddenGui) item.control.isVisible = item.isVisible;
+    if (sunGlow && glowState) sunGlow.intensity = glowState.intensity;
+  }
+}
+
+function projectScenePointToPixel(pos, width, height) {
+  const activeCam = scene.activeCamera;
+  const viewport = activeCam.viewport.toGlobal(width, height);
+  const projected = BABYLON.Vector3.Project(
+    pos,
+    BABYLON.Matrix.Identity(),
+    scene.getTransformMatrix(),
+    viewport
+  );
+  return projected;
+}
+
+async function collectLiveParticleRecordsForExport(settings) {
+  const records = [];
+  const activeCam = scene.activeCamera;
+  if (!activeCam) return records;
+
+  let gpuPositions = null;
+  if (rawParticles?.readback) {
+    gpuPositions = await rawParticles.readback();
+  }
+
+  const limit = Math.max(0, maxUsed || 0);
+  for (let i = 0; i < limit; i++) {
+    if (!expiryByIndex || expiryByIndex[i] <= simSeconds) continue;
+
+    let pos = null;
+    let lifeLeftSeconds = Math.max(0, expiryByIndex[i] - simSeconds);
+    const beta = Number(betaByIndex?.[i] ?? cpuSlots?.[i]?.beta ?? 0);
+
+    if (gpuPositions) {
+      const o = i * 4;
+      const lifeFromGpu = gpuPositions[o + 3];
+      if (!(lifeFromGpu > 0)) continue;
+      pos = new BABYLON.Vector3(gpuPositions[o], gpuPositions[o + 1], gpuPositions[o + 2]);
+      lifeLeftSeconds = lifeFromGpu;
+    } else if (particleMeshes?.[i]?.isEnabled?.()) {
+      pos = particleMeshes[i].position.clone();
+    } else if (cpuSlots?.[i]) {
+      const slot = cpuSlots[i];
+      const dt = (simulationTimeJD - slot.t0JD) * SECONDS_PER_DAY;
+      if (dt <= 0) pos = slot.r0_m.scale(SCALE);
+      else if (slot.mu <= 0) pos = slot.r0_m.add(slot.v0_mps.scale(dt)).scale(SCALE);
+      else pos = keplerUniversalPropagate(slot.r0_m, slot.v0_mps, dt, slot.mu).r.scale(SCALE);
+    }
+
+    if (!pos) continue;
+
+    const radiusM = radiusMetersFromBeta(beta, settings);
+    const distanceM = Math.max(1e-9, BABYLON.Vector3.Distance(activeCam.position, pos) / SCALE);
+    const angularRadiusRad = Math.atan(radiusM / distanceM);
+    const trueRadiusPx = angularRadiusRad / Math.max(1e-12, activeCam.fov || (observerViewState?.fovDeg || 5) * DEG) * engine.getRenderHeight(true);
+    const renderedRadiusPx = Math.max(
+      settings.minRenderedRadiusPx,
+      Math.min(settings.maxRenderedRadiusPx, trueRadiusPx * settings.visibleAngularMagnifier)
+    );
+
+    const projected = projectScenePointToPixel(pos, engine.getRenderWidth(true), engine.getRenderHeight(true));
+    const insideFrame = projected.z >= 0 && projected.z <= 1 &&
+      projected.x >= -renderedRadiusPx && projected.x <= engine.getRenderWidth(true) + renderedRadiusPx &&
+      projected.y >= -renderedRadiusPx && projected.y <= engine.getRenderHeight(true) + renderedRadiusPx;
+
+    const ageDays = birthJDByIndex?.[i] ? simulationTimeJD - birthJDByIndex[i] : null;
+    const cometDistanceKm = cometMesh ? BABYLON.Vector3.Distance(pos, cometMesh.position) / SCALE / 1000 : null;
+    const crossSectionM2 = Math.PI * radiusM * radiusM;
+    const massKg = (4 / 3) * Math.PI * radiusM * radiusM * radiusM * settings.densityKgM3;
+
+    records.push({
+      index: i,
+      beta,
+      radiusM,
+      radiusUm: radiusM * 1e6,
+      diameterUm: radiusM * 2e6,
+      densityKgM3: settings.densityKgM3,
+      qpr: settings.qpr,
+      massKg,
+      crossSectionM2,
+      distanceFromObserverM: distanceM,
+      distanceFromObserverAU: distanceM / AU,
+      angularRadiusRad,
+      trueRadiusPx,
+      renderedRadiusPx,
+      screenX: projected.x,
+      screenY: projected.y,
+      screenZ: projected.z,
+      insideFrame,
+      positionSceneX: pos.x,
+      positionSceneY: pos.y,
+      positionSceneZ: pos.z,
+      positionAUX: pos.x / (AU * SCALE),
+      positionAUY: pos.y / (AU * SCALE),
+      positionAUZ: pos.z / (AU * SCALE),
+      distanceFromCometKm: cometDistanceKm,
+      birthJD: birthJDByIndex?.[i] || null,
+      ageDays,
+      remainingLifetimeDays: lifeLeftSeconds / SECONDS_PER_DAY
+    });
+  }
+  return records;
+}
+
+function drawBetaSizedParticles(ctx, records) {
+  ctx.save();
+
+  // Draw crisp β-sized discs, not soft additive radial gradients. The previous
+  // gradient + "lighter" blend mode made dense near-nucleus particles look
+  // like a fake glowing coma/halo. This keeps the particles visible while making
+  // the exported image easier to interpret geometrically.
+  ctx.globalCompositeOperation = "source-over";
+
+  const visible = records.filter(r => r.insideFrame).sort((a, b) => b.renderedRadiusPx - a.renderedRadiusPx);
+  for (const r of visible) {
+    const radius = Math.max(0.001, r.renderedRadiusPx);
+    const alpha = Math.max(0.18, Math.min(0.82, 0.34 + Math.log10(Math.max(1.001, radius)) * 0.16));
+
+    ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+    ctx.beginPath();
+    ctx.arc(r.screenX, r.screenY, radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (radius >= 2) {
+      ctx.strokeStyle = "rgba(255,255,255,0.18)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+  }
+
+  ctx.restore();
+}
+
+function buildBetaSizedParticleCsv(records) {
+  const header = [
+    "particle_index", "beta_simulation_input", "radius_um_from_beta", "diameter_um_from_beta",
+    "radius_m_from_beta", "density_kg_m3", "qpr", "mass_kg", "cross_section_m2",
+    "distance_from_observer_au", "angular_radius_rad", "true_radius_px_unmagnified",
+    "rendered_radius_px", "screen_x_px", "screen_y_px", "screen_z", "inside_exported_frame",
+    "position_au_x", "position_au_y", "position_au_z", "distance_from_comet_km",
+    "birth_jd", "age_days", "remaining_lifetime_days"
+  ];
+  const rows = [header];
+  for (const r of records) {
+    rows.push([
+      r.index, r.beta, r.radiusUm, r.diameterUm, r.radiusM, r.densityKgM3, r.qpr,
+      r.massKg, r.crossSectionM2, r.distanceFromObserverAU, r.angularRadiusRad,
+      r.trueRadiusPx, r.renderedRadiusPx, r.screenX, r.screenY, r.screenZ,
+      r.insideFrame ? 1 : 0, r.positionAUX, r.positionAUY, r.positionAUZ,
+      r.distanceFromCometKm, r.birthJD, r.ageDays, r.remainingLifetimeDays
+    ]);
+  }
+  return rows;
+}
+
+function summarizeBetaSizedParticles(records) {
+  const visible = records.filter(r => r.insideFrame);
+  const radii = visible.map(r => r.radiusUm).sort((a, b) => a - b);
+  const rendered = visible.map(r => r.renderedRadiusPx).sort((a, b) => a - b);
+  const pct = (arr, q) => arr.length ? arr[Math.min(arr.length - 1, Math.max(0, Math.floor((arr.length - 1) * q)))] : null;
+  const sum = (arr, f) => arr.reduce((acc, x) => acc + f(x), 0);
+  return {
+    liveParticles: records.length,
+    particlesInsideExportedFrame: visible.length,
+    radiusUm: { min: pct(radii, 0), p50: pct(radii, 0.5), p90: pct(radii, 0.9), max: pct(radii, 1) },
+    renderedRadiusPx: { min: pct(rendered, 0), p50: pct(rendered, 0.5), p90: pct(rendered, 0.9), max: pct(rendered, 1) },
+    totalCrossSectionM2InsideFrame: sum(visible, r => r.crossSectionM2),
+    totalMassKgInsideFrame: sum(visible, r => r.massKg)
+  };
+}
+
+async function exportBetaSizedTelescopeImage() {
+  if (!scene || !engine || !canvas) return;
+  if (!observerViewActive) {
+    if (observerInfo) observerInfo.textContent = `${lastObserverMetadata || ""}\n\nActivate telescope view first, then export the β-size telescope image.`.trim();
+    return;
+  }
+
+  const btn = exportBetaSizedTelescopeImageBtn;
+  if (btn) btn.textContent = "Exporting…";
+
+  try {
+    updateObserverCamera();
+    const settings = readBetaSizeExportSettings();
+    const baseCanvas = await makeFreshSceneCanvasWithoutParticleOverlay();
+    const ctx = baseCanvas.getContext("2d");
+    const records = await collectLiveParticleRecordsForExport(settings);
+
+    drawBetaSizedParticles(ctx, records);
+    drawReticleOnly(ctx, baseCanvas.width, baseCanvas.height);
+
+    const date = jdToDateString(simulationTimeJD);
+    const baseName = `beta_size_telescope_${date}_JD${simulationTimeJD.toFixed(5)}`.replace(/[^a-zA-Z0-9_.-]+/g, "_");
+
+    downloadCanvasWithName(baseCanvas, `${baseName}.png`);
+    downloadCSV(`${baseName}_particles.csv`, buildBetaSizedParticleCsv(records));
+
+    const summary = summarizeBetaSizedParticles(records);
+
+    if (observerInfo) observerInfo.textContent = `${lastObserverMetadata || ""}\n\nExported β-size telescope image with ${records.length} live particles. ${summary.particlesInsideExportedFrame} particles are inside the exported frame.`;
+  } catch (err) {
+    console.error("β-size telescope export failed", err);
+    if (observerInfo) observerInfo.textContent = `${lastObserverMetadata || ""}\n\nβ-size telescope export failed: ${err.message || err}`;
+  } finally {
+    if (btn) btn.textContent = "Export β-size telescope image";
+  }
+}
+
+function downloadCanvasWithName(canvasToDownload, filename) {
+  const a = document.createElement("a");
+  a.href = canvasToDownload.toDataURL("image/png");
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 }
 
 async function saveObserverScreenshot() {

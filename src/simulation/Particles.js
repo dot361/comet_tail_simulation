@@ -12,6 +12,9 @@ let tailParticles = [];
 let gpuWriteCursor = 0;
 let simSeconds = 0;
 let expiryByIndex;
+let betaByIndex;
+let birthJDByIndex;
+let lifeSecondsByIndex;
 let maxUsed = 0;
 let cpuSlots;
 let particleMeshes = [];
@@ -91,6 +94,9 @@ function createTailParticle(timeNowJD) {
     if (tries === rawParticles.max) return;
     const idx = gpuWriteCursor;
     expiryByIndex[idx] = simSeconds + lifeSeconds;
+    betaByIndex[idx] = beta;
+    birthJDByIndex[idx] = timeNowJD;
+    lifeSecondsByIndex[idx] = lifeSeconds;
     gpuWriteCursor = (gpuWriteCursor + 1) % rawParticles.max;
     if (idx + 1 > maxUsed) maxUsed = idx + 1;
     seedParticleAt(idx, r0_scene, v_scene, lifeSeconds, beta);
@@ -109,6 +115,9 @@ function createTailParticle(timeNowJD) {
     const mu_p   = GMsun * Math.max(1 - beta, 0);
     cpuSlots[idx] = { t0JD: timeNowJD, r0_m, v0_mps, mu: mu_p, lifeSeconds, beta };
     expiryByIndex[idx] = simSeconds + lifeSeconds;
+    betaByIndex[idx] = beta;
+    birthJDByIndex[idx] = timeNowJD;
+    lifeSecondsByIndex[idx] = lifeSeconds;
     gpuWriteCursor = (gpuWriteCursor + 1) % MAX_PARTICLES;
     if (idx + 1 > maxUsed) maxUsed = idx + 1;
     const mesh = particleMeshes[idx];
@@ -122,6 +131,9 @@ async function initParticles() {
   const MAX_PARTICLES = useCompute ? MAX_PARTICLES_GPU : MAX_PARTICLES_CPU;
   cpuSlots      = new Array(MAX_PARTICLES);
   expiryByIndex = new Float32Array(MAX_PARTICLES);
+  betaByIndex = new Float32Array(MAX_PARTICLES);
+  birthJDByIndex = new Float64Array(MAX_PARTICLES);
+  lifeSecondsByIndex = new Float32Array(MAX_PARTICLES);
 
   updateOrbitParameters();
 
