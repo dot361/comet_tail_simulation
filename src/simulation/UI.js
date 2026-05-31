@@ -24,6 +24,17 @@ function initUI() {
 
   visModeSelect?.addEventListener("change", () => { visMode = visModeSelect.value; });
 
+  const autoPrefillToggle = document.getElementById("autoPrefillToggle");
+
+  let headlessDebounceTimer = null;
+  function scheduleHeadlessPropagate() {
+    if (!autoPrefillToggle?.checked) return;
+    clearTimeout(headlessDebounceTimer);
+    headlessDebounceTimer = setTimeout(() => {
+      window.headlessPropagate?.(simulationTimeJD);
+    }, 600);
+  }
+
   [
     eccentricityInput, perihelionInput, inclinationInput,
     longitudeAscendingNodeInput, argumentPerihelionInput, perihelionDateInput,
@@ -34,6 +45,7 @@ function initUI() {
     input.addEventListener("input", () => {
       window.switchToUser?.();
       updateOrbitParameters();
+      scheduleHeadlessPropagate();
     });
   });
 

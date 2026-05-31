@@ -4,6 +4,7 @@ function startRenderLoop() {
 
   if (rawParticles) {
     scene.onAfterRenderObservable.add(() => {
+      if (isHeadless) return;
       const dtSeconds = isPaused ? 0 : (engine.getDeltaTime() / 1000) * simulationSpeed;
       const vpF32     = new Float32Array(scene.getTransformMatrix().m);
       const cs        = cometStateAtJD(simulationTimeJD);

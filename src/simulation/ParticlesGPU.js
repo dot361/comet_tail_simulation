@@ -318,6 +318,20 @@ fn fs_main(@location(0) life: f32, @location(1) @interpolate(flat) pid: u32) -> 
     device.queue.submit([enc.finish()]);
   }
 
+  // ── Headless compute-only dispatch (no render pass) ────────────────────────
+  function computeOnly(dtSeconds, maxCount) {
+    device.queue.writeBuffer(simUBO, 0, new Float32Array([dtSeconds]));
+    device.queue.writeBuffer(simUBO, 4, new Uint32Array([maxCount >>> 0]));
+    device.queue.writeBuffer(simUBO, 8, new Float32Array([MU_SCENE]));
+    const enc = device.createCommandEncoder();
+    const pass = enc.beginComputePass();
+    pass.setPipeline(computePipeline);
+    pass.setBindGroup(0, computeBG);
+    pass.dispatchWorkgroups(Math.ceil(maxCount / 64));
+    pass.end();
+    device.queue.submit([enc.finish()]);
+  }
+
   // ── GPU readback (copies posLife buffer to CPU for export) ─────────────────
   async function readback() {
     const byteSize = MAX_PARTICLES * 16;
@@ -335,5 +349,5 @@ fn fs_main(@location(0) life: f32, @location(1) @interpolate(flat) pid: u32) -> 
     return out;
   }
 
-  return { seed, update, resize, clear, readback, max: MAX_PARTICLES };
+  return { seed, update, computeOnly, resize, clear, readback, max: MAX_PARTICLES };
 }

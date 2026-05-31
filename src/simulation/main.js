@@ -5,6 +5,10 @@ let isPaused         = false;
 let uiAccum          = 0;
 window.simulationTimeJD = simulationTimeJD;
 
+let isHeadless       = false;
+let headlessRunning  = Promise.resolve();
+let headlessAbortFlag = { cancelled: false };
+
 const timelineSlider  = document.getElementById("timelineSlider");
 const timelineLabel   = document.getElementById("timelineLabel");
 const updateViewBtn   = document.getElementById("updateViewBtn");
@@ -34,23 +38,130 @@ timelineSlider.addEventListener("input", () => {
 
 updateViewBtn.addEventListener("click", () => {
   const selectedJD = baseJD + parseInt(timelineSlider.value);
-  simulationTimeJD = selectedJD;
-  const cs = cometStateAtJD(simulationTimeJD);
-  cometMesh.position.copyFrom(cs.r_scene);
-  earthMesh.position.copyFrom(getPlanetPosition(simulationTimeJD, earthEl));
-  tailParticles.length = 0;
-  for (let i = 0; i < particleMeshes.length; i++) particleMeshes[i].setEnabled(false);
-  if (rawParticles) rawParticles.clear();
-  cpuSlots.fill(undefined);
-  gpuWriteCursor = 0;
-  maxUsed = 0;
-  expiryByIndex.fill(0);
-  betaByIndex?.fill?.(0);
-  birthJDByIndex?.fill?.(0);
-  lifeSecondsByIndex?.fill?.(0);
-  simSeconds = 0;
-  window.emitCarry = 0;
+  headlessPropagate(selectedJD);
 });
+
+// ─── Headless propagation ───────────────────────────────────────────────────
+
+async function headlessPropagate(targetJD, { dtDays = 1.0 } = {}) {
+  // Cancel any running headless pass
+  headlessAbortFlag.cancelled = true;
+  headlessAbortFlag = { cancelled: false };
+  const myFlag = headlessAbortFlag;
+
+  // Wait for the previous pass to fully exit before touching shared state
+  await headlessRunning.catch(() => {});
+  if (myFlag.cancelled) return;
+
+  let resolveRunning;
+  headlessRunning = new Promise(r => { resolveRunning = r; });
+
+  // Progress overlay
+  const overlay = document.createElement('div');
+  overlay.style.cssText =
+    'position:fixed;inset:0;background:rgba(0,0,0,0.72);display:flex;' +
+    'flex-direction:column;align-items:center;justify-content:center;' +
+    'z-index:9999;color:#e8e8e8;font-family:monospace;font-size:13px;gap:10px;';
+  const label = document.createElement('div');
+  const barWrap = document.createElement('div');
+  barWrap.style.cssText = 'width:280px;height:6px;background:#2a2a2a;border-radius:3px;overflow:hidden;';
+  const fill = document.createElement('div');
+  fill.style.cssText = 'height:100%;width:0%;background:#4ab4ff;border-radius:3px;';
+  barWrap.appendChild(fill);
+  overlay.appendChild(label);
+  overlay.appendChild(barWrap);
+  document.body.appendChild(overlay);
+
+  const savedPaused = isPaused;
+  isPaused  = true;
+  isHeadless = true;
+
+  const lifetimeDays = baseLifetime / velocityScale;
+  const startJD      = targetJD - lifetimeDays;
+  const totalSteps   = Math.ceil(lifetimeDays / dtDays);
+  const dtSeconds    = dtDays * SECONDS_PER_DAY;
+
+  setSimTime(startJD, { resetParticles: true, focus: false });
+  window.emitCarry = 0;
+
+  try {
+    for (let step = 0; step < totalSteps; step++) {
+      if (myFlag.cancelled) break;
+
+      const cs  = cometStateAtJD(simulationTimeJD);
+      const rAU = Math.max(1e-3, cs.rh_AU);
+
+      if (rAU <= ACTIVE_R_AU) {
+        cumulativeExposure += dtDays / (rAU * rAU);
+      }
+      const ageFactor = Math.exp(-Math.LN2 * (cumulativeExposure / Math.max(1e-6, fadeHalfLifeEDays)));
+
+      const Q     = Math.max(0, activityK) * ageFactor / Math.pow(rAU, Math.max(0, activityN));
+      const scale = Math.min(1, Q);
+      const pPerDay = Math.max(0, parseFloat(particleCountInput.value) || 0);
+      window.emitCarry += pPerDay * scale * dtDays;
+      let births = Math.floor(window.emitCarry);
+      window.emitCarry -= births;
+      if (births > HARD_CAP) births = HARD_CAP;
+
+      for (let k = 0; k < births; k++) createTailParticle(simulationTimeJD);
+
+      simulationTimeJD += dtDays;
+      simSeconds       += dtSeconds;
+
+      if (rawParticles && maxUsed > 0) {
+        rawParticles.computeOnly(dtSeconds, maxUsed);
+      }
+
+      // Yield every 20 steps so the browser stays responsive
+      if (step % 20 === 19) {
+        const pct = Math.round((step + 1) / totalSteps * 100);
+        fill.style.width = pct + '%';
+        label.textContent = `Prefilling tail… ${pct}%  (${jdToDateString(simulationTimeJD)})`;
+        await new Promise(r => setTimeout(r, 0));
+      }
+    }
+
+    if (!myFlag.cancelled) {
+      simulationTimeJD        = targetJD;
+      window.simulationTimeJD = targetJD;
+      timelineSlider.value    = String(Math.floor(targetJD - baseJD));
+      timelineLabel.textContent = `Date: ${jdToDateString(targetJD)}`;
+      updateTimeDisplay(targetJD);
+      const cs = cometStateAtJD(targetJD);
+      cometMesh.position.copyFrom(cs.r_scene);
+      earthMesh.position.copyFrom(getPlanetPosition(targetJD, earthEl));
+
+      // CPU path: the render loop only updates mesh positions when unpaused,
+      // so force one position pass here so particles appear correctly when paused.
+      if (!rawParticles) {
+        for (let k = 0; k < maxUsed; k++) {
+          const slot  = cpuSlots[k];
+          const alive = (expiryByIndex[k] > simSeconds) && slot;
+          const mesh  = particleMeshes[k];
+          if (!alive) { if (mesh.isEnabled()) mesh.setEnabled(false); continue; }
+          const dt = (targetJD - slot.t0JD) * SECONDS_PER_DAY;
+          let rScene;
+          if (dt <= 0) {
+            rScene = slot.r0_m.scale(SCALE);
+          } else if (slot.mu <= 0) {
+            rScene = slot.r0_m.add(slot.v0_mps.scale(dt)).scale(SCALE);
+          } else {
+            rScene = keplerUniversalPropagate(slot.r0_m, slot.v0_mps, dt, slot.mu).r.scale(SCALE);
+          }
+          mesh.position.copyFrom(rScene);
+          if (!mesh.isEnabled()) mesh.setEnabled(true);
+        }
+      }
+    }
+  } finally {
+    isHeadless = false;
+    isPaused   = savedPaused;
+    document.body.removeChild(overlay);
+    resolveRunning();
+  }
+}
+window.headlessPropagate = headlessPropagate;
 
 // ─── Set simulation time ────────────────
 
