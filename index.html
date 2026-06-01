@@ -655,8 +655,21 @@
         <label for="observerModeSelect">Manual observer position</label>
         <select id="observerModeSelect">
           <option value="earth" selected>Earth (geocentric)</option>
+          <option value="ground">Ground observatory (topocentric)</option>
           <option value="j2000">Custom J2000 position</option>
         </select>
+
+        <label for="observerGroundLabelInput">Ground observatory label</label>
+        <input type="text" id="observerGroundLabelInput" value="Ground observatory" />
+
+        <label for="observerGroundLonInput">Ground longitude east-positive (degrees)</label>
+        <input type="number" id="observerGroundLonInput" step="0.0001" value="0" />
+
+        <label for="observerGroundLatInput">Ground latitude (degrees)</label>
+        <input type="number" id="observerGroundLatInput" step="0.0001" value="0" />
+
+        <label for="observerGroundAltInput">Ground altitude (m)</label>
+        <input type="number" id="observerGroundAltInput" step="1" value="0" />
 
         <label for="observerXYZInput">Custom position (x, y, z)</label>
         <input type="text" id="observerXYZInput" value="1, 1, 1" placeholder="e.g. 1, 0, 0.2" />
@@ -692,6 +705,10 @@
         <button id="saveObserverScreenshotBtn">Save screenshot</button>
 
         <hr style="border:0;border-top:1px solid rgba(255,255,255,0.16);margin:10px 0;">
+        <button id="exportTailOnlyBetaFitsBtn">Export telescope tail FITS</button>
+
+        <hr style="border:0;border-top:1px solid rgba(255,255,255,0.16);margin:10px 0;">
+        <label>β-size PNG visualisation</label>
         <label for="betaSizeDensityInput">β → size density (kg/m³)</label>
         <input type="number" id="betaSizeDensityInput" min="100" max="5000" step="50" value="1000" />
 
@@ -1010,6 +1027,7 @@
   <script src="./src/simulation/ParticlesGPU.js"></script>
   <script src="./src/simulation/Engine.js"></script>
   <script src="./src/simulation/Camera.js"></script>
+  <script src="./src/simulation/FitsExport.js"></script>
   <script src="./src/simulation/World.js"></script>
   <script src="./src/simulation/Planets.js"></script>
   <script src="./src/simulation/Comet.js"></script>
@@ -1021,6 +1039,7 @@
   <script src="./src/simulation/RenderLoop.js"></script>
   <script src="./src/simulation/main.js"></script>
   <script src="./src/simulation/CometLoader.js"></script>
+  <script src="./src/simulation/FitsObservationPresets.js"></script>
 
 
   <script>

@@ -17,6 +17,10 @@ const observerPresetSelect     = document.getElementById("observerPresetSelect")
 const observerModeSelect       = document.getElementById("observerModeSelect");
 const observerXYZInput         = document.getElementById("observerXYZInput");
 const observerUnitSelect       = document.getElementById("observerUnitSelect");
+const observerGroundLabelInput = document.getElementById("observerGroundLabelInput");
+const observerGroundLonInput   = document.getElementById("observerGroundLonInput");
+const observerGroundLatInput   = document.getElementById("observerGroundLatInput");
+const observerGroundAltInput   = document.getElementById("observerGroundAltInput");
 const observerTargetSelect     = document.getElementById("observerTargetSelect");
 const observerRaInput          = document.getElementById("observerRaInput");
 const observerDecInput         = document.getElementById("observerDecInput");
@@ -131,7 +135,8 @@ function initCamera() {
   exportBetaSizedTelescopeImageBtn?.addEventListener("click", exportBetaSizedTelescopeImage);
 
   for (const el of [
-    observerPresetSelect, observerModeSelect, observerXYZInput, observerUnitSelect, observerTargetSelect,
+    observerPresetSelect, observerModeSelect, observerXYZInput, observerUnitSelect, observerGroundLabelInput,
+    observerGroundLonInput, observerGroundLatInput, observerGroundAltInput, observerTargetSelect,
     observerRaInput, observerDecInput, observerFovInput, observerRollInput
   ]) {
     el?.addEventListener("input", () => {
@@ -312,6 +317,28 @@ function getEarthPositionScene() {
   return earthMesh?.position?.clone?.() ?? getPlanetPosition(simulationTimeJD, earthEl);
 }
 
+function gmstDegAtJD(jd) {
+  const T = (jd - 2451545.0) / 36525.0;
+  return wrapDeg(280.46061837 + 360.98564736629 * (jd - 2451545.0) + 0.000387933 * T * T - (T * T * T) / 38710000);
+}
+
+function getGroundObserverPositionScene(ground = {}) {
+  const earthPos = getEarthPositionScene();
+  const lonDeg = Number.isFinite(Number(ground.lonDeg)) ? Number(ground.lonDeg) : 0;
+  const latDeg = Number.isFinite(Number(ground.latDeg)) ? Number(ground.latDeg) : 0;
+  const altM = Number.isFinite(Number(ground.altM)) ? Number(ground.altM) : 0;
+  const theta = (gmstDegAtJD(simulationTimeJD) + lonDeg) * DEG;
+  const lat = latDeg * DEG;
+  const radiusM = PLANET_RADII_KM.Earth * 1000 + altM;
+  const cosLat = Math.cos(lat);
+  const offsetEq = new BABYLON.Vector3(
+    radiusM * cosLat * Math.cos(theta),
+    radiusM * cosLat * Math.sin(theta),
+    radiusM * Math.sin(lat)
+  );
+  return earthPos.add(earthCenteredEqToScene(offsetEq));
+}
+
 function earthCenteredEqToScene(offsetMetersEq) {
   const ecl = eqToEcl(offsetMetersEq);
   return ecl.scale(SCALE);
@@ -370,7 +397,9 @@ function getPresetObserverPosition(presetId) {
 function getObserverModeLabel(state = observerViewState) {
   const preset = SPACE_TELESCOPE_PRESETS[state?.presetId];
   if (preset) return `${preset.shortName} preset`;
-  return state?.mode === "earth" ? "Earth/geocentric" : "Custom J2000";
+  if (state?.mode === "earth") return "Earth/geocentric";
+  if (state?.mode === "ground") return state?.groundObserver?.label || "Ground observatory/topocentric";
+  return "Custom J2000";
 }
 
 function getObserverPresetNote(state = observerViewState) {
@@ -390,9 +419,17 @@ function readObserverStateFromUI() {
     customPosition = j2000ToSceneUnits(v.x, v.y, v.z, observerUnitSelect?.value ?? "AU", AU, SCALE);
   }
 
+  const groundObserver = {
+    label: observerGroundLabelInput?.value?.trim?.() || "Ground observatory",
+    lonDeg: parseFloat(observerGroundLonInput?.value ?? "0") || 0,
+    latDeg: parseFloat(observerGroundLatInput?.value ?? "0") || 0,
+    altM: parseFloat(observerGroundAltInput?.value ?? "0") || 0
+  };
+
   return {
     presetId: observerPresetSelect?.value ?? "manual",
     mode: observerModeSelect?.value ?? "earth",
+    groundObserver,
     targetMode: observerTargetSelect?.value ?? "comet",
     fovDeg,
     rollDeg,
@@ -431,6 +468,7 @@ function getObserverPosition(state = observerViewState) {
   const presetPos = getPresetObserverPosition(state?.presetId);
   if (presetPos) return presetPos;
   if (state?.mode === "earth") return getEarthPositionScene();
+  if (state?.mode === "ground") return getGroundObserverPositionScene(state?.groundObserver);
   return state?.customPosition?.clone?.() ?? BABYLON.Vector3.Zero();
 }
 
@@ -614,7 +652,7 @@ function readBetaSizeExportSettings() {
   const densityKgM3 = safeParseNumber(betaSizeDensityInput, 1000, 1, 10000);
   const qpr = safeParseNumber(betaSizeQprInput, 1, 0.0001, 10);
   const visibleAngularMagnifier = safeParseNumber(betaSizeMagnifierInput, 1e13, 1, 1e20);
-  const minRenderedRadiusPx = safeParseNumber(betaSizeMinPxInput, 0.6, 0, 1000);
+  const minRenderedRadiusPx = safeParseNumber(betaSizeMinPxInput, 0.2, 0, 1000);
   const maxRenderedRadiusPx = safeParseNumber(betaSizeMaxPxInput, 35, 0.01, 10000);
   const betaFloor = 1e-6;
   return { densityKgM3, qpr, visibleAngularMagnifier, minRenderedRadiusPx, maxRenderedRadiusPx, betaFloor };
@@ -714,19 +752,33 @@ async function makeFreshSceneCanvasWithoutParticleOverlay() {
 function projectScenePointToPixel(pos, width, height) {
   const activeCam = scene.activeCamera;
   const viewport = activeCam.viewport.toGlobal(width, height);
-  const projected = BABYLON.Vector3.Project(
+
+  // IMPORTANT: the FITS image can be square while the browser canvas is 16:9.
+  // scene.getTransformMatrix() uses the browser aspect ratio, which stretches a
+  // square FITS export and produces an incorrect tail shape. Build a projection
+  // matrix for the requested export dimensions instead.
+  const aspect = Math.max(1e-12, width / Math.max(1, height));
+  const near = Math.max(1e-9, activeCam.minZ || 1e-6);
+  const far = Math.max(near * 10, activeCam.maxZ || 1e10);
+  const projection = BABYLON.Matrix?.PerspectiveFovLH
+    ? BABYLON.Matrix.PerspectiveFovLH(activeCam.fov, aspect, near, far, true)
+    : activeCam.getProjectionMatrix(true);
+  const transform = activeCam.getViewMatrix(true).multiply(projection);
+
+  return BABYLON.Vector3.Project(
     pos,
     BABYLON.Matrix.Identity(),
-    scene.getTransformMatrix(),
+    transform,
     viewport
   );
-  return projected;
 }
 
-async function collectLiveParticleRecordsForExport(settings) {
+async function collectLiveParticleRecordsForExport(settings, exportSize = null) {
   const records = [];
   const activeCam = scene.activeCamera;
   if (!activeCam) return records;
+  const exportWidth = Math.max(1, Math.round(exportSize?.width || engine.getRenderWidth(true)));
+  const exportHeight = Math.max(1, Math.round(exportSize?.height || engine.getRenderHeight(true)));
 
   let gpuPositions = null;
   if (rawParticles?.readback) {
@@ -762,16 +814,16 @@ async function collectLiveParticleRecordsForExport(settings) {
     const radiusM = radiusMetersFromBeta(beta, settings);
     const distanceM = Math.max(1e-9, BABYLON.Vector3.Distance(activeCam.position, pos) / SCALE);
     const angularRadiusRad = Math.atan(radiusM / distanceM);
-    const trueRadiusPx = angularRadiusRad / Math.max(1e-12, activeCam.fov || (observerViewState?.fovDeg || 5) * DEG) * engine.getRenderHeight(true);
+    const trueRadiusPx = angularRadiusRad / Math.max(1e-12, activeCam.fov || (observerViewState?.fovDeg || 5) * DEG) * exportHeight;
     const renderedRadiusPx = Math.max(
       settings.minRenderedRadiusPx,
       Math.min(settings.maxRenderedRadiusPx, trueRadiusPx * settings.visibleAngularMagnifier)
     );
 
-    const projected = projectScenePointToPixel(pos, engine.getRenderWidth(true), engine.getRenderHeight(true));
+    const projected = projectScenePointToPixel(pos, exportWidth, exportHeight);
     const insideFrame = projected.z >= 0 && projected.z <= 1 &&
-      projected.x >= -renderedRadiusPx && projected.x <= engine.getRenderWidth(true) + renderedRadiusPx &&
-      projected.y >= -renderedRadiusPx && projected.y <= engine.getRenderHeight(true) + renderedRadiusPx;
+      projected.x >= -renderedRadiusPx && projected.x <= exportWidth + renderedRadiusPx &&
+      projected.y >= -renderedRadiusPx && projected.y <= exportHeight + renderedRadiusPx;
 
     const ageDays = birthJDByIndex?.[i] ? simulationTimeJD - birthJDByIndex[i] : null;
     const cometDistanceKm = cometMesh ? BABYLON.Vector3.Distance(pos, cometMesh.position) / SCALE / 1000 : null;
