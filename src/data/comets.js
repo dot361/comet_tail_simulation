@@ -20,7 +20,6 @@ const COMETS = {
     ]
   },
 
-
   "C2024E1": {
     displayName: "C/2024 E1",
     horizonsId: "C/2024 E1",
