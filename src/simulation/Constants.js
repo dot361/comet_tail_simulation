@@ -14,7 +14,14 @@ const _sE = Math.sin(EPS_J2000);
 
 // ─── Simulation / particle system limits ─────────────────────────────────────
 const ACTIVE_R_AU = 3.0;
-const MAX_PARTICLES_GPU = 1_000_000;
+const MAX_PARTICLES_GPU_DEFAULT = 1_000_000;
+const MAX_PARTICLES_GPU = Math.max(
+  1_000,
+  Math.min(
+    20_000_000,
+    parseInt(new URLSearchParams(location.search).get("maxParticles") || String(MAX_PARTICLES_GPU_DEFAULT), 10) || MAX_PARTICLES_GPU_DEFAULT
+  )
+);
 const MAX_PARTICLES_CPU = 5_000;
 const HARD_CAP = 4096;
 const POINT_PX = 3.0;

@@ -264,6 +264,33 @@ fn fs_main(@location(0) life: f32, @location(1) @interpolate(flat) pid: u32) -> 
     device.queue.writeBuffer(velBetaGPU, off, seedScratch.buffer);
   }
 
+  // ── Bulk seed particles for reproducible benchmarks ──────────────────────────
+  function seedBulk(count, makeParticle) {
+    const n = Math.max(0, Math.min(count >>> 0, MAX_PARTICLES));
+    const posLife = new Float32Array(n * 4);
+    const velBeta = new Float32Array(n * 4);
+
+    for (let i = 0; i < n; i++) {
+      const p = makeParticle(i, n);
+      const o = i * 4;
+      posLife[o + 0] = p.pos.x;
+      posLife[o + 1] = p.pos.y;
+      posLife[o + 2] = p.pos.z;
+      posLife[o + 3] = p.lifeSeconds;
+      velBeta[o + 0] = p.vel.x;
+      velBeta[o + 1] = p.vel.y;
+      velBeta[o + 2] = p.vel.z;
+      velBeta[o + 3] = p.beta;
+    }
+
+    clear();
+    if (n > 0) {
+      device.queue.writeBuffer(posLifeGPU, 0, posLife.buffer, posLife.byteOffset, posLife.byteLength);
+      device.queue.writeBuffer(velBetaGPU, 0, velBeta.buffer, velBeta.byteOffset, velBeta.byteLength);
+    }
+    return n;
+  }
+
   // ── Per-frame update (compute + render pass) ────────────────────────────────
   function update(dtSeconds, maxCount, vpMatrix, cometVel_scene, cometPos_scene, simState) {
     const { baseLifetime, visMode, distVisMaxScene, vRelMax_scene } = simState;
@@ -349,5 +376,5 @@ fn fs_main(@location(0) life: f32, @location(1) @interpolate(flat) pid: u32) -> 
     return out;
   }
 
-  return { seed, update, computeOnly, resize, clear, readback, max: MAX_PARTICLES };
+  return { seed, seedBulk, update, computeOnly, resize, clear, readback, max: MAX_PARTICLES };
 }
