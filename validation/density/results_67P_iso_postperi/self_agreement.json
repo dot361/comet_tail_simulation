@@ -1,0 +1,22 @@
+{
+  "rho_num": {
+    "rmse": 3.4849430371986034e-14,
+    "normalized_rmse": 0.035495658698832665,
+    "shape_cosine": 0.9993700117339146,
+    "shape_overlap": 0.8985174226889872,
+    "pearson_r": 0.9993659601266955,
+    "shape_rmse_unitsum": 2.1173660091098628e-07,
+    "half_A_total": 1.6458363447497945e-07,
+    "half_B_total": 1.6459463921018933e-07,
+    "half_A_max": 5.492344357094225e-10,
+    "half_B_max": 5.493528409949988e-10
+  },
+  "shape": [
+    128,
+    128,
+    128
+  ],
+  "rebuilds_A": 25,
+  "rebuilds_B": 25,
+  "note": "Self-agreement of two independent halves of one run \u2014 the CEILING values; read the `compare` (sim-vs-COMTAILS) metrics against them."
+}

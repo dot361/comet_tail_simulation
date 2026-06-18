@@ -108,8 +108,17 @@ function stumpffS(z) {
 }
 
 // ─── Universal Kepler propagator ─────────────────────────────────────────────
-
-function keplerUniversalPropagate(r0, v0, dt, mu) {
+//
+// Single-step solver. For very small mu (e.g. beta close to 1, so
+// mu = GMsun*(1-beta) is tiny) combined with longer dt, the universal
+// variable x grows large, making z = alpha*x^2 extreme — the Stumpff
+// functions' cosh/sinh of sqrt(-z) then blow up and the Newton iteration
+// loses all numerical footing well before x converges (confirmed: produces
+// positions wrong by 5+ orders of magnitude for some beta>0.998, long-dt
+// combinations). keplerUniversalPropagate (below) guards against this by
+// substepping; this function is the unguarded per-step math, unchanged from
+// before so every previously-working call stays bit-identical.
+function _keplerUniversalStep(r0, v0, dt, mu) {
   if (!isFinite(dt) || dt === 0) return { r: r0.clone(), v: v0.clone() };
 
   const r0mag = r0.length();
@@ -147,6 +156,43 @@ function keplerUniversalPropagate(r0, v0, dt, mu) {
 
   if (![r.x,r.y,r.z,v.x,v.y,v.z].every(Number.isFinite)) {
     return { r: r0.add(v0.scale(dt)), v: v0.clone() };
+  }
+  return { r, v };
+}
+
+// Keeping |z| = |alpha * x^2| below this bound keeps cosh/sinh(sqrt(|z|))
+// within a range where the Newton iteration stays well-conditioned
+// (sqrt(50) ~ 7.07, cosh(7.07) ~ 590 — nowhere near float64 precision loss
+// or overflow). z scales as 1/N^2 under substepping (x scales as 1/N for a
+// fixed alpha), so N = ceil(sqrt(|z_initial|/Z_SAFE)) is the exact substep
+// count needed to bring it under the bound.
+const KEPLER_Z_SAFE = 50;
+const KEPLER_MAX_SUBSTEPS = 64;
+
+function keplerUniversalPropagate(r0, v0, dt, mu) {
+  if (!isFinite(dt) || dt === 0) return { r: r0.clone(), v: v0.clone() };
+
+  const r0mag = Math.max(1e-12, r0.length());
+  const v0mag = v0.length();
+  const alpha = 2/r0mag - (v0mag*v0mag)/mu;
+
+  let xGuess;
+  if (Math.abs(alpha) > 1e-12) xGuess = Math.sqrt(mu) * Math.abs(alpha) * Math.abs(dt);
+  else                         xGuess = Math.sqrt(mu) * Math.abs(dt) / r0mag;
+  const zGuess = alpha * xGuess * xGuess;
+
+  let nSub = 1;
+  if (Math.abs(zGuess) > KEPLER_Z_SAFE) {
+    nSub = Math.min(KEPLER_MAX_SUBSTEPS, Math.ceil(Math.sqrt(Math.abs(zGuess) / KEPLER_Z_SAFE)));
+  }
+
+  if (nSub === 1) return _keplerUniversalStep(r0, v0, dt, mu);
+
+  const subDt = dt / nSub;
+  let r = r0, v = v0;
+  for (let s = 0; s < nSub; s++) {
+    const step = _keplerUniversalStep(r, v, subDt, mu);
+    r = step.r; v = step.v;
   }
   return { r, v };
 }

@@ -1,0 +1,33 @@
+{
+  "rho_num": {
+    "rmse": 0.0014123859694837723,
+    "normalized_rmse": 0.20440277008239005,
+    "pearson_r": 0.9974503066893475,
+    "comtails_total": 86.9954457853841,
+    "sim_total": 104.0415877327246,
+    "comtails_max": 1.1136745941195012,
+    "sim_max": 1.3041348457336426
+  },
+  "rho_mass": {
+    "rmse": 1.1822790059284246e-18,
+    "normalized_rmse": 0.1935156797865513,
+    "pearson_r": 0.9999351138641854,
+    "comtails_total": 1.549343033667911e-13,
+    "sim_total": 1.8429563942155252e-13,
+    "comtails_max": 9.673314929244703e-16,
+    "sim_max": 1.1533823179030785e-15
+  },
+  "same_grid": true,
+  "shape": [
+    64,
+    64,
+    64
+  ],
+  "sim_bake_totals": {
+    "massEmittedKg": 9545200198.765112,
+    "grainsEmitted": 1.7324392329482217e+25,
+    "massBinnedKg": 7194759197.869553,
+    "grainsBinned": 4.0617030898458986e+24,
+    "massBinnedFraction": 0.753756762356892
+  }
+}

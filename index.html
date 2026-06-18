@@ -726,22 +726,14 @@
         <button id="generateSynchronesBtn">Generate synchrones</button>
         <button id="exportSynSydCSVBtn">Export syn/synd CSV (RA/Dec)</button>
 
-        <label for="densityGridNInput">Density grid resolution (N³)</label>
-        <select id="densityGridNInput">
-          <option value="32">32³ — 131k voxels</option>
-          <option value="64" selected>64³ — 262k voxels</option>
-          <option value="128">128³ — 2M voxels</option>
-          <option value="256">256³ — 16M voxels</option>
-        </select>
-        <label for="densityMaxAgeInput">Max particle age for export (days, 0 = all)</label>
-        <input id="densityMaxAgeInput" type="number" value="50" min="0" max="500" step="5" style="width:60px">
-        <label for="densityMaxRadInput">Max distance from nucleus (km, 0 = all)</label>
-        <input id="densityMaxRadInput" type="number" value="2000000" min="0" max="50000000" step="100000" style="width:90px">
-        <label for="densityClipLoInput">Bound clip low % (outlier trim)</label>
-        <input id="densityClipLoInput" type="number" value="1" min="0" max="10" step="0.5" style="width:60px">
-        <label for="densityClipHiInput">Bound clip high %</label>
-        <input id="densityClipHiInput" type="number" value="99" min="90" max="100" step="0.5" style="width:60px">
-        <button id="exportDensityBtn">Export density grid (.npy)</button>
+        <p style="margin:8px 0 4px 0;opacity:0.85;">GPU accumulated density (reads the real particle buffer)</p>
+        <label style="opacity:0.7;font-size:11px;">Lets the live sim keep running and stacks the ACTUAL GPU particle positions over many frames into one cube — uses the fixed bounds above. Run from a real browser (needs WebGPU). Higher frames = less shot noise.</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">
+          <input id="gpuAccumFramesInput" type="number" value="200" min="1" max="100000" title="Frames to accumulate">
+          <input id="gpuAccumGridNInput" type="number" value="64" min="2" max="1024" title="Grid resolution N³">
+        </div>
+        <button id="exportGpuAccumBtn">Export GPU density cube (accumulated)</button>
+
         <button id="exportValidationBtn">Export orbit validation CSV</button>
 
         <hr>
@@ -761,6 +753,7 @@
         </select>
 
         <button id="exportContourDataBtn">Export telescope contour data</button>
+
       </div>
     </details>
 
@@ -1032,9 +1025,10 @@
   <script src="./src/simulation/Planets.js"></script>
   <script src="./src/simulation/Comet.js"></script>
   <script src="./src/simulation/SyndyneSynchrone.js"></script>
-  <script src="./src/simulation/ExportDensity.js"></script>
+  <script src="./src/simulation/ExportUtils.js"></script>
   <script src="./src/simulation/Particles.js"></script>
   <script src="./src/simulation/ExportTelescopeContours.js"></script>
+  <script src="./src/simulation/ExportDensityGpuAccum.js"></script>
   <script src="./src/simulation/OrbitValidationExport.js"></script>
   <script src="./src/simulation/UI.js"></script>
   <script src="./src/simulation/RenderLoop.js"></script>

@@ -14,9 +14,9 @@ const _sE = Math.sin(EPS_J2000);
 
 // ─── Simulation / particle system limits ─────────────────────────────────────
 const ACTIVE_R_AU = 3.0;
-const MAX_PARTICLES_GPU = 1_000_000;
+const MAX_PARTICLES_GPU = 4_000_000;
 const MAX_PARTICLES_CPU = 5_000;
-const HARD_CAP = 4096;
+const HARD_CAP = 8192;
 const POINT_PX = 3.0;
 
 // ─── UI timing ───────────────────────────────────────────────────────────────
