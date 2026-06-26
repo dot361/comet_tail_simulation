@@ -232,34 +232,6 @@ function sampleBetaFromCurve(u) {
   return Math.min(xn, Math.max(x0, x0s + t * (x1s - x0s)));
 }
 
-// ─── Programmatic preset: match a grain-size power law ────────────────────────
-//
-// COMTAILS emits a differential size distribution dn/da ∝ a^sizePower. With
-// beta ∝ 1/a, that transforms to a beta number-PDF dn/dbeta ∝ beta^(-sizePower-2)
-// (Jacobian |da/dbeta| ∝ 1/beta^2). Since the curve y(beta) IS the sampled PDF
-// (see rebuildBetaTables), set y(beta) = beta^(-sizePower-2). NOTE: the live
-// model clamps beta <= 1, so the highest-beta (smallest, unbound) grains COMTAILS
-// includes cannot be represented here — a matched run converges only over the
-// bound-grain range.
-function setBetaCurveSizePower(sizePower, betaMax = 1) {
-  const e    = -sizePower - 2;                          // beta-PDF exponent; e=1.9 for sizePower=-3.9
-  const xmax = Math.max(0.05, Math.min(1, betaMax));    // cutoff = beta(rmin), clamped to the sim's beta<=1
-  const NP   = 9;
-  // Points span [0, xmax] so the curve's DOMAIN enforces the upper cutoff: the
-  // PDF/CDF machinery returns 0 outside the point range, so no beta > xmax is
-  // ever sampled. Shape is (beta/xmax)^e (== beta^e after normalization).
-  betaUI.pts = Array.from({ length: NP }, (_, i) => {
-    const x = xmax * (i / (NP - 1));
-    return { x, y: Math.max(0, Math.min(1, Math.pow(i / (NP - 1), e))) };
-  });
-  betaUI.enabled = true;
-  recomputeDomain();
-  rebuildBetaTables();
-  drawBetaCurve();
-  return { sizePower, betaExponent: e, betaMax: xmax, points: betaUI.pts };
-}
-window.setBetaCurveSizePower = setBetaCurveSizePower;
-
 // ─── Initialization (runs at page load — DOM is ready by this point) ──────────
 
 (function initBetaCurve() {

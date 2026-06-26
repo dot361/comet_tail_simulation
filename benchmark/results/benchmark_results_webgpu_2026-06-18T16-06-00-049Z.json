@@ -1,0 +1,127 @@
+{
+  "mode": "WebGPU",
+  "environment": {
+    "mode": "WebGPU",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "cpuLogicalThreads": 20,
+    "babylonVersion": "9.13.0",
+    "renderWidth": 2005,
+    "renderHeight": 1305,
+    "monitorWidth": 2005,
+    "monitorHeight": 1305,
+    "devicePixelRatio": 1,
+    "webgpuComputeEnabled": true,
+    "rawParticlesMax": 3000000,
+    "maxParticlesGpuConstant": 3000000,
+    "maxParticlesCpuConstant": 5000,
+    "webgpuAdapterInfo": {},
+    "timestamp": "2026-06-18T15:55:13.559Z"
+  },
+  "options": {
+    "counts": [
+      5000,
+      100000,
+      500000,
+      1000000,
+      2000000,
+      3000000
+    ],
+    "runs": 5,
+    "warmupSeconds": 5,
+    "measureSeconds": 20,
+    "simulationSpeed": 3600,
+    "lifeSeconds": 1577880000
+  },
+  "results": [
+    {
+      "particles": 5000,
+      "requestedParticles": 5000,
+      "runs": [
+        1866.1846835361457,
+        1863.606819659017,
+        1864.9220261696248,
+        1824.249666268389,
+        1831.6450506485146
+      ],
+      "medianFps": 1863.606819659017,
+      "meanFps": 1850.121649256338,
+      "frameMs": 0.536593872404357,
+      "note": "v-sync limited / refresh-rate limited"
+    },
+    {
+      "particles": 100000,
+      "requestedParticles": 100000,
+      "runs": [
+        1675.4829806807884,
+        1672.6165476690155,
+        1671.5998520043931,
+        1669.9666006679556,
+        1677.1161441927902
+      ],
+      "medianFps": 1672.6165476690155,
+      "meanFps": 1673.3564250429886,
+      "frameMs": 0.5978656622724531,
+      "note": "v-sync limited / refresh-rate limited"
+    },
+    {
+      "particles": 500000,
+      "requestedParticles": 500000,
+      "runs": [
+        967.9451602742167,
+        967.6967766772557,
+        966.4485229051129,
+        965.0951745241005,
+        965.1276154288429
+      ],
+      "medianFps": 966.4485229051129,
+      "meanFps": 966.4626499619056,
+      "frameMs": 1.0347162588588086,
+      "note": "v-sync limited / refresh-rate limited"
+    },
+    {
+      "particles": 1000000,
+      "requestedParticles": 1000000,
+      "runs": [
+        620.5317415084282,
+        620.2534809889258,
+        619.0783322583652,
+        617.4191290435477,
+        612.2102063365938
+      ],
+      "medianFps": 619.0783322583652,
+      "meanFps": 617.8985780271721,
+      "frameMs": 1.6153044742368103,
+      "note": "v-sync limited / refresh-rate limited"
+    },
+    {
+      "particles": 2000000,
+      "requestedParticles": 2000000,
+      "runs": [
+        364.419024382924,
+        363.7963620363762,
+        363.46910512606087,
+        363.3245672802836,
+        363.29646050875164
+      ],
+      "medianFps": 363.46910512606087,
+      "meanFps": 363.6611038668793,
+      "frameMs": 2.751265474552983,
+      "note": "v-sync limited / refresh-rate limited"
+    },
+    {
+      "particles": 3000000,
+      "requestedParticles": 3000000,
+      "runs": [
+        256.7794576433933,
+        255.43997160668195,
+        255.05053029318802,
+        255.27319631437985,
+        255.05945389386056
+      ],
+      "medianFps": 255.27319631437985,
+      "meanFps": 255.52052195030075,
+      "frameMs": 3.9173717195457423,
+      "note": "v-sync limited / refresh-rate limited"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+log: Comet benchmark helper loaded. Start the simulation, then run: runCometBenchmark()
+log: BJS - [19:06:03]: Babylon.js v9.13.0 - WebGPU1 engine
+warning: [CometSim] FORCE=cpu -> disabling compute on WebGPU engine.
+log: Benchmark environment:
+table: {mode: CPU fallback, userAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWeb…KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36, cpuLogicalThreads: 20, babylonVersion: 9.13.0, renderWidth: 2005, renderHeight: 1305, monitorWidth: 2005, monitorHeight: 1305, devicePixelRatio: 1, webgpuComputeEnabled: false, rawParticlesMax: null, maxParticlesGpuConstant: 1000000, maxParticlesCpuConstant: 5000, webgpuAdapterInfo: GPUAdapterInfo, timestamp: 2026-06-18T16:06:05.718Z}
+log: Running CPU fallback benchmark for counts: [5000]
+log: Benchmarking 5000 particles...
+table: [Object]
+log: Benchmark complete: {mode: CPU fallback, environment: Object, options: Object, results: Array(1)}

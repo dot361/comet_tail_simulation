@@ -1,0 +1,8 @@
+Benchmark summary
+=================
+
+At 5,000 particles, WebGPU frame time was 0.54 ms and CPU fallback frame time was 68.12 ms.
+Frame-time speedup: 126.95x.
+FPS speedup: 126.95x.
+
+This benchmark uses a deterministic pre-filled particle population. It measures interactive propagation and rendering performance for a fixed active particle count.

@@ -1,0 +1,15 @@
+{
+  "manualCleanupEnabled": true,
+  "manualCleanupCoordinateSystem": "arcsec",
+
+  "manualCleanupEraseCircles": [],
+  "manualCleanupEraseRectangles": [],
+  "manualCleanupErasePolygons": [],
+
+  "manualCleanupKeepCircles": [],
+  "manualCleanupKeepRectangles": [],
+  "manualCleanupKeepPolygons": [],
+
+  "manualCleanupApplyToSourceMask": true,
+  "manualCleanupDiagnostic": true
+}
