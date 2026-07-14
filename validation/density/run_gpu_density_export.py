@@ -38,13 +38,20 @@ ap.add_argument("--gridn", type=int, default=64, help="cube resolution N^3")
 ap.add_argument("--prefill-dt", type=float, default=0.05, help="days/step for the tail prefill (smaller avoids HARD_CAP clipping)")
 ap.add_argument("--comet", default="67P")
 ap.add_argument("--headless", action="store_true", help="attempt headless WebGPU (default is headed = reliable)")
+ap.add_argument("--stage-timeout", type=float, default=600.0,
+                help="maximum seconds for one tail rebuild or GPU snapshot (default: 600)")
 # live-sim emission parameters (drive createTailParticle via the UI inputs)
 ap.add_argument("--particle-count", default="80000", help="particles/sim-day at 1 AU (fills toward the 4e6 GPU cap over the lifetime)")
 ap.add_argument("--lifetime", default="50", help="grain lifetime [days] = prefill window")
 ap.add_argument("--v0-mps", default="800", help="ejection speed V0 [m/s] (0.8 km/s)")
 ap.add_argument("--gamma", default="0.1", help="V0 * beta^gamma")
 ap.add_argument("--kappa", default="-0.5", help="V0 * rh^kappa")
-ap.add_argument("--expcos", default="1.0", help="sunward-cone tightness")
+ap.add_argument("--expcos", default="0.0",
+                help="sunward-hemisphere angular exponent. Validation default 0 gives a uniform hemisphere "
+                     "with angle-independent speed, exactly matching COMTAILS mode 2 with expocos=0")
+ap.add_argument("--activity-profile", choices=("comtails", "native"), default="comtails",
+                help="release-time weighting: matched COMTAILS log10(dM/dt) table (default), "
+                     "or the simulator's native heliocentric activity law")
 ap.add_argument("--size-power", type=float, default=None,
                 help="CONTROLLED run: match the emitted grain-size law dn/da ~ a^power "
                      "(e.g. -3.9) by shaping the beta curve to beta^(-power-2). Off = blind (UI curve).")
@@ -84,15 +91,24 @@ EMISSION_FIELDS = {
     "#ejectionExpcosInput": args.expcos,
 }
 
+# Shared by all three COMTAILS reference cases (only r_min differs). Values are
+# log10(dM/dt) and are linearly interpolated in log space by both codes.
+COMTAILS_ACTIVITY_DAYS = [-300, -250, -200, -150, -100, -50, 0, 50, 100, 150, 200, 250, 300]
+COMTAILS_ACTIVITY_LOG10 = [1.0, 1.5, 2.0, 2.5, 3.0, 3.0, 3.6, 3.0, 3.0, 2.5, 2.0, 1.5, 1.0]
+
 
 async def main():
     async with async_playwright() as p:
+        print(f"Launching Chromium (headless={args.headless})...", flush=True)
         browser = await p.chromium.launch(headless=args.headless, args=WEBGPU_ARGS)
         page = await browser.new_page()
+        page.set_default_timeout(60000)
         page.on("console", lambda m: print(f"[console.{m.type}] {m.text}") if ("GpuAccum" in m.text or "rror" in m.text) else None)
         page.on("pageerror", lambda e: print(f"[pageerror] {e}"))
 
-        await page.goto(INDEX)
+        print(f"Loading {INDEX} (including Babylon.js CDN assets)...", flush=True)
+        await page.goto(INDEX, wait_until="load", timeout=120000)
+        print("Page loaded; starting simulation...", flush=True)
         await page.click("#startBtn")
 
         # Wait for the WebGPU particle path to come up.
@@ -102,11 +118,12 @@ async def main():
                 timeout=30000,
             )
         except Exception:
-            print("ERROR: WebGPU particle path never initialised (rawParticles is null).")
-            print("       This export needs real WebGPU. Run without --headless, or on a")
-            print("       machine/browser where Chromium can create a WebGPU adapter.")
             await browser.close()
-            return
+            raise RuntimeError(
+                "WebGPU particle path never initialised (rawParticles is null). "
+                "Run without --headless or on a Chromium setup with a WebGPU adapter."
+            )
+        print("WebGPU particle path initialized.", flush=True)
 
         # Open every collapsible UI group first — inputs inside a closed
         # <details> are not visible, so page.fill() would hang waiting for them.
@@ -121,6 +138,16 @@ async def main():
             except Exception:
                 print(f"  (input {sel} not found — skipping)")
         await page.evaluate("() => (typeof updateOrbitParameters === 'function') && updateOrbitParameters()")
+
+        if args.activity_profile == "comtails":
+            await page.evaluate(
+                "([days, logs]) => window.setValidationEmissionLogProfile(days, logs)",
+                [COMTAILS_ACTIVITY_DAYS, COMTAILS_ACTIVITY_LOG10],
+            )
+            print("  activity history matched to the COMTAILS log10(dM/dt) table", flush=True)
+        else:
+            await page.evaluate("() => window.clearValidationEmissionProfile()")
+            print("  activity history uses the simulator-native law", flush=True)
 
         # CONTROLLED run: shape the beta curve to a grain-size power law so the
         # emitted beta distribution matches COMTAILS' (dn/da ∝ a^power). Off by
@@ -153,13 +180,21 @@ async def main():
 
         for k in range(args.rebuilds):
             # Build an independent realization of the tail at the observation epoch.
-            await page.evaluate(
-                "([jd, dt]) => window.headlessPropagate(jd, { dtDays: dt })",
-                [args.obs_jd, args.prefill_dt],
+            print(f"  rebuild {k+1}/{args.rebuilds}: propagating tail...", flush=True)
+            await asyncio.wait_for(
+                page.evaluate(
+                    "([jd, dt]) => window.headlessPropagate(jd, { dtDays: dt })",
+                    [args.obs_jd, args.prefill_dt],
+                ),
+                timeout=args.stage_timeout,
             )
-            snap = await page.evaluate(
-                "(opts) => window.gpuDensitySnapshot(opts)",
-                {"gridN": gridN, **BOUNDS},
+            print(f"  rebuild {k+1}/{args.rebuilds}: reading and binning GPU buffer...", flush=True)
+            snap = await asyncio.wait_for(
+                page.evaluate(
+                    "(opts) => window.gpuDensitySnapshot(opts)",
+                    {"gridN": gridN, **BOUNDS},
+                ),
+                timeout=args.stage_timeout,
             )
             counts = np.asarray(snap["counts"], dtype=np.float64)
             accum += counts
@@ -173,7 +208,7 @@ async def main():
             if rebuild_stack is not None:
                 rebuild_stack[k] = counts
             print(f"  rebuild {k+1}/{args.rebuilds}: {snap['hits']:,} particles binned "
-                  f"(JD {snap['jd']:.3f})")
+                  f"(JD {snap['jd']:.3f})", flush=True)
 
         await browser.close()
 
@@ -212,6 +247,14 @@ async def main():
             "emission": {"particleCountPerDayAt1AU": float(args.particle_count), "lifetimeDays": float(args.lifetime),
                          "V0_mps": float(args.v0_mps), "gamma": float(args.gamma), "kappa": float(args.kappa),
                          "expcos": float(args.expcos),
+                         "directionGeometry": ("uniform-sunward-hemisphere-constant-speed"
+                                               if float(args.expcos) == 0.0
+                                               else "sunward-hemisphere-direction-weighted"),
+                         "activityProfile": args.activity_profile,
+                         "activityDaysFromPerihelion": (COMTAILS_ACTIVITY_DAYS
+                                                        if args.activity_profile == "comtails" else None),
+                         "activityLog10Rate": (COMTAILS_ACTIVITY_LOG10
+                                               if args.activity_profile == "comtails" else None),
                          "sizePowerMatched": args.size_power,
                          "rmin_m": (args.rmin if args.size_power is not None else None),
                          "betaMax": ((1.191e-3 * args.qpr / (2.0 * args.rho_grain * args.rmin))

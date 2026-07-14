@@ -7,9 +7,9 @@ cometocentric (n,m,l) frame:
   compare   sim-vs-COMTAILS shape metrics (the headline agreement number).
                 python analyze_density.py compare <comtails.npz> <sim_meta.json>
 
-  self      self-agreement NOISE FLOOR: compare the two independent halves
-            (_A / _B) of one run. This is the CEILING the metric can reach at
-            this particle count, so the `compare` number is read against it.
+  self      self-agreement sampling benchmark: compare the two independent
+            halves (_A / _B) of one run. This measures Monte Carlo uncertainty;
+            it is not a strict ceiling because the full cube contains both halves.
                 python analyze_density.py self <..._A_meta.json> <..._B_meta.json>
 
   converge  CONVERGENCE curve: rebuild the cube from the first k rebuilds and
@@ -17,8 +17,8 @@ cometocentric (n,m,l) frame:
             {stem}_rebuilds.npy stack written by run_gpu_density_export.py).
                 python analyze_density.py converge <sim_meta.json> [--comtails <npz>]
 
-Together: `converge` shows the number is settled, `self` shows the best it could
-be, `compare` is the number — read against the `self` ceiling.
+Together: `converge` shows the number is settled, `self` measures its sampling
+scale, and `compare` gives the cross-code result.
 
 Cubes live in the same frame as the COMTAILS patch (py_COMTAILS-main/orbital/
 heliorbit.py + models/dust_tail.py): n = cross-tail, m = along-tail (radial),
@@ -202,7 +202,7 @@ def cmd_compare(args):
     _emit(report, args.out)
 
 
-# ─── Subcommand: self (noise-floor ceiling) ──────────────────────────────────
+# ─── Subcommand: self (sampling benchmark) ───────────────────────────────────
 
 def cmd_self(args):
     a = load_sim_cube(args.half_a_meta)
@@ -219,12 +219,12 @@ def cmd_self(args):
     report["shape"] = list(a["rho_num"].shape)
     report["rebuilds_A"] = a["meta"].get("rebuilds")
     report["rebuilds_B"] = b["meta"].get("rebuilds")
-    report["note"] = ("Self-agreement of two independent halves of one run — the CEILING "
-                      "values; read the `compare` (sim-vs-COMTAILS) metrics against them.")
+    report["note"] = ("Self-agreement of two independent halves of one run: a Monte Carlo "
+                      "sampling benchmark, not a strict ceiling for the full accumulated cube.")
 
     ceil = report.get("rho_num", {})
     if "shape_cosine" in ceil:
-        print(f"\nNoise-floor ceiling (rho_num): shape_cosine={ceil['shape_cosine']:.4f}, "
+        print(f"\nSplit-half sampling benchmark (rho_num): shape_cosine={ceil['shape_cosine']:.4f}, "
               f"shape_overlap={ceil['shape_overlap']:.4f}, pearson_r={ceil['pearson_r']:.4f}")
     _emit(report, args.out)
 

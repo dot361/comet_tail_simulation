@@ -16,7 +16,7 @@
     Use -SkipExport to (re)run only the analysis on sim cubes you already made.
 
 .PARAMETER Gridn
-    Sim cube resolution N^3 (default 128). COMTAILS (256^3) is block-averaged down
+    Sim cube resolution N^3 (default 64). COMTAILS (256^3) is block-averaged down
     to this in analyze_density, so N must divide 256 (64,128,256).
 
 .PARAMETER SkipExport
@@ -30,8 +30,10 @@
 #>
 param(
     [int[]]  $Cases        = @(1, 2, 3),
-    [int]    $Gridn        = 128,
-    [int]    $Rebuilds     = 50,
+    [int]    $Gridn        = 64,
+    [int]    $Rebuilds     = 20,
+    [int]    $ParticleCount = 20000,
+    [double] $PrefillDt    = 0.1,
     [double] $SmoothSigma  = 0.5,
     [double] $SizePower    = [double]::NaN,   # set (e.g. -3.9) for a CONTROLLED run: match the grain-size law via the beta curve. NaN = blind.
     [switch] $SkipExport,
@@ -39,15 +41,16 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+$env:MPLBACKEND = "Agg"
 
 # Per case: obs-JD, gamma, grid bounds (km), results dir, and the COMTAILS grain
 # size law (power, rmin[m]) read from each run's input/dmdt.dat. All three use
 # power=-3.9, rho=3000; rmin differs (case 3 = 0.5um -> beta_max~0.40, fully within
 # the sim's beta<=1; cases 1-2 = 0.1um -> beta_max~1.99, partly capped).
 $CASE_TABLE = @{
-    1 = @{ label = "1 peri gamma=0.1 (rh 1.24, anchor)";  obsjd = 2457248.5; gamma = 0.1; nbound = 959606;   lbound = 1439408.9; result = "results_67P_iso_peri";    power = -3.9; rmin = 1e-7 }
-    2 = @{ label = "2 peri gamma=0.7 (rh 1.24, g-axis)";  obsjd = 2457248.5; gamma = 0.7; nbound = 959606;   lbound = 1439408.9; result = "results_67P_iso_gamma07"; power = -3.9; rmin = 1e-7 }
-    3 = @{ label = "3 +100d gamma=0.1 (rh 1.71, epoch)";  obsjd = 2457348.5; gamma = 0.1; nbound = 960278.5; lbound = 1440417.8; result = "results_67P_iso_postperi"; power = -3.9; rmin = 5e-7 }
+    1 = @{ label = "1 peri gamma=0.1 (rh 1.24, anchor)";  obsjd = 2457248.5; gamma = 0.1; lifetime = 50; nbound = 959606;   lbound = 1439408.9; result = "results_67P_hemi_peri";    power = -3.9; rmin = 1e-7 }
+    2 = @{ label = "2 peri gamma=0.7 (rh 1.24, g-axis)";  obsjd = 2457248.5; gamma = 0.7; lifetime = 51; nbound = 959606;   lbound = 1439408.9; result = "results_67P_hemi_gamma07"; power = -3.9; rmin = 1e-7 }
+    3 = @{ label = "3 +100d gamma=0.1 (rh 1.71, epoch)";  obsjd = 2457348.5; gamma = 0.1; lifetime = 51; nbound = 960278.5; lbound = 1440417.8; result = "results_67P_hemi_postperi"; power = -3.9; rmin = 5e-7 }
 }
 
 $controlled = -not [double]::IsNaN($SizePower)
@@ -61,6 +64,7 @@ foreach ($c in ($Cases | Sort-Object -Unique)) {
     $obsStr = "{0:F2}" -f $case.obsjd            # e.g. 2457248.50, matches the python stem
     # Controlled runs tag the stem _sp<round(|power|*10)> so they never collide with blind.
     $spTag  = if ($controlled) { "_sp" + [int][math]::Round([math]::Abs($SizePower) * 10) } else { "" }
+    $analysisTag = $spTag
     $stem   = "gpu_density_cube_JD${obsStr}_${Gridn}${spTag}"
     $resDir = Join-Path $ValidationDir $case.result
 
@@ -81,11 +85,13 @@ foreach ($c in ($Cases | Sort-Object -Unique)) {
         $expArgs = @(
             "run_gpu_density_export.py",
             "--obs-jd", $case.obsjd, "--gamma", $case.gamma, "--v0-mps", 800,
-            "--kappa", -0.5, "--rebuilds", $Rebuilds, "--gridn", $Gridn,
+            "--kappa", -0.5, "--expcos", 0, "--lifetime", $case.lifetime,
+            "--activity-profile", "comtails", "--particle-count", $ParticleCount,
+            "--prefill-dt", $PrefillDt, "--rebuilds", $Rebuilds, "--gridn", $Gridn,
             "--nbound", $case.nbound, "--lbound", $case.lbound
         )
         if ($controlled) { $expArgs += @("--size-power", $SizePower, "--rmin", $case.rmin) }
-        python @expArgs
+        python -u @expArgs
         if ($LASTEXITCODE -ne 0) { Write-Host "export FAILED for case $c - skipping." -ForegroundColor Red; continue }
 
         $produced = Get-ChildItem "_gpu_downloads\$stem*" -ErrorAction SilentlyContinue
@@ -103,17 +109,17 @@ foreach ($c in ($Cases | Sort-Object -Unique)) {
 
     Write-Host "-> self (noise floor)..."  -ForegroundColor Gray
     if ((Test-Path $metaA) -and (Test-Path $metaB)) {
-        python analyze_density.py self $metaA $metaB --out (Join-Path $resDir "self_agreement.json")
+        python analyze_density.py self $metaA $metaB --out (Join-Path $resDir "self_agreement${analysisTag}.json")
     } else {
         Write-Host "   (no _A/_B halves - skipping self)" -ForegroundColor Yellow
     }
 
     Write-Host "-> compare (vs COMTAILS)..." -ForegroundColor Gray
-    python analyze_density.py compare $comtails $meta --out (Join-Path $resDir "density_comparison.json")
+    python analyze_density.py compare $comtails $meta --out (Join-Path $resDir "density_comparison${analysisTag}.json")
 
     Write-Host "-> converge..." -ForegroundColor Gray
     python analyze_density.py converge $meta --comtails $comtails `
-        --out-json (Join-Path $resDir "convergence.json") --out-plot (Join-Path $resDir "convergence.png")
+        --out-json (Join-Path $resDir "convergence${analysisTag}.json") --out-plot (Join-Path $resDir "convergence${analysisTag}.png")
 
     Write-Host "-> figures (slices, mip, profiles, scatter)..." -ForegroundColor Gray
     foreach ($mode in @("slices", "mip", "profiles", "scatter")) {
@@ -123,8 +129,8 @@ foreach ($c in ($Cases | Sort-Object -Unique)) {
 
     # Collect the headline numbers for the summary table.
     $cmpCos = $selfCos = $ovl = "n/a"
-    $cmpPath  = Join-Path $resDir "density_comparison.json"
-    $selfPath = Join-Path $resDir "self_agreement.json"
+    $cmpPath  = Join-Path $resDir "density_comparison${analysisTag}.json"
+    $selfPath = Join-Path $resDir "self_agreement${analysisTag}.json"
     if (Test-Path $cmpPath)  { $j = Get-Content $cmpPath  -Raw | ConvertFrom-Json; $cmpCos  = "{0:F4}" -f $j.rho_num.shape_cosine; $ovl = "{0:F4}" -f $j.rho_num.shape_overlap }
     if (Test-Path $selfPath) { $j = Get-Content $selfPath -Raw | ConvertFrom-Json; $selfCos = "{0:F4}" -f $j.rho_num.shape_cosine }
     $summary += [pscustomobject]@{ Case = $case.label; CompareCos = $cmpCos; SelfCeiling = $selfCos; Overlap = $ovl }
@@ -134,8 +140,8 @@ $modeStr = if ($controlled) { "CONTROLLED (size-power $SizePower matched)" } els
 Write-Host ""
 Write-Host "================ SUMMARY (grid $($Gridn)^3, $modeStr) ================" -ForegroundColor Green
 $summary | Format-Table -AutoSize
-Write-Host "CompareCos vs COMTAILS, read against SelfCeiling (noise floor)." -ForegroundColor Green
-Write-Host "Close to ceiling = at noise floor; well below = real model difference." -ForegroundColor Green
+Write-Host "CompareCos vs COMTAILS; SelfCeiling is the split-half sampling benchmark." -ForegroundColor Green
+Write-Host "It is not a strict ceiling because the full cube contains all rebuilds." -ForegroundColor Green
 if ($controlled) {
     Write-Host "Controlled: cases 1-2 keep a beta>1 cap residual (rmin 0.1um); case 3 is fully representable (rmin 0.5um)." -ForegroundColor Green
 }

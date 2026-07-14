@@ -43,7 +43,40 @@ updateViewBtn.addEventListener("click", () => {
 
 // ─── Headless propagation ───────────────────────────────────────────────────
 
-async function headlessPropagate(targetJD, { dtDays = 1.0 } = {}) {
+// Optional validation-only emission history. Interactive runs leave this null
+// and retain the native heliocentric-distance/activity-exposure law below.
+// Density validation can install the same perihelion-relative log10(dM/dt)
+// table used by COMTAILS so release-time weighting is no longer a confound.
+let validationEmissionScaleAtJD = null;
+window.setValidationEmissionLogProfile = function(daysFromPerihelion, logRates) {
+  if (!Array.isArray(daysFromPerihelion) || !Array.isArray(logRates) ||
+      daysFromPerihelion.length !== logRates.length || daysFromPerihelion.length < 2) {
+    throw new Error("Validation emission profile requires equal arrays with at least two samples");
+  }
+  const days = daysFromPerihelion.map(Number);
+  const logs = logRates.map(Number);
+  const logMax = Math.max(...logs);
+  validationEmissionScaleAtJD = (jd) => {
+    const x = jd - t0;
+    if (x <= days[0]) return Math.pow(10, logs[0] - logMax);
+    if (x >= days[days.length - 1]) return Math.pow(10, logs[logs.length - 1] - logMax);
+    let hi = 1;
+    while (hi < days.length && days[hi] < x) hi++;
+    const lo = hi - 1;
+    const f = (x - days[lo]) / (days[hi] - days[lo]);
+    const logRate = logs[lo] + f * (logs[hi] - logs[lo]);
+    return Math.pow(10, logRate - logMax);
+  };
+};
+window.clearValidationEmissionProfile = function() {
+  validationEmissionScaleAtJD = null;
+};
+
+async function headlessPropagate(targetJD, {
+  dtDays = 1.0,
+  collectMetrics = false,
+  waitForGpu = false,
+} = {}) {
   // Cancel any running headless pass
   headlessAbortFlag.cancelled = true;
   headlessAbortFlag = { cancelled: false };
@@ -80,6 +113,24 @@ async function headlessPropagate(targetJD, { dtDays = 1.0 } = {}) {
   const startJD      = targetJD - lifetimeDays;
   const totalSteps   = Math.ceil(lifetimeDays / dtDays);
   const dtSeconds    = dtDays * SECONDS_PER_DAY;
+  const metrics = {
+    targetJD,
+    startJD,
+    historyDays: lifetimeDays,
+    dtDays,
+    totalSteps,
+    requestedBirths: 0,
+    attemptedBirths: 0,
+    acceptedBirths: 0,
+    hardCapClippedBirths: 0,
+    capacityDroppedBirths: 0,
+    gpuDispatches: 0,
+    particleStepUpdates: 0,
+    finalActiveParticles: 0,
+    finalMaxUsed: 0,
+    bufferCapacity: rawParticles?.max ?? cpuSlots?.length ?? 0,
+    completed: false,
+  };
 
   setSimTime(startJD, { resetParticles: true, focus: false });
   window.emitCarry = 0;
@@ -96,21 +147,38 @@ async function headlessPropagate(targetJD, { dtDays = 1.0 } = {}) {
       }
       const ageFactor = Math.exp(-Math.LN2 * (cumulativeExposure / Math.max(1e-6, fadeHalfLifeEDays)));
 
-      const Q     = Math.max(0, activityK) * ageFactor / Math.pow(rAU, Math.max(0, activityN));
-      const scale = Math.min(1, Q);
+      const Q = Math.max(0, activityK) * ageFactor / Math.pow(rAU, Math.max(0, activityN));
+      const scale = validationEmissionScaleAtJD
+        ? Math.max(0, Math.min(1, validationEmissionScaleAtJD(simulationTimeJD)))
+        : Math.min(1, Q);
       const pPerDay = Math.max(0, parseFloat(particleCountInput.value) || 0);
       window.emitCarry += pPerDay * scale * dtDays;
       let births = Math.floor(window.emitCarry);
       window.emitCarry -= births;
-      if (births > HARD_CAP) births = HARD_CAP;
+      if (collectMetrics) metrics.requestedBirths += births;
+      if (births > HARD_CAP) {
+        if (collectMetrics) metrics.hardCapClippedBirths += births - HARD_CAP;
+        births = HARD_CAP;
+      }
 
-      for (let k = 0; k < births; k++) createTailParticle(simulationTimeJD);
+      for (let k = 0; k < births; k++) {
+        const accepted = createTailParticle(simulationTimeJD);
+        if (collectMetrics) {
+          metrics.attemptedBirths++;
+          if (accepted) metrics.acceptedBirths++;
+          else metrics.capacityDroppedBirths++;
+        }
+      }
 
       simulationTimeJD += dtDays;
       simSeconds       += dtSeconds;
 
       if (rawParticles && maxUsed > 0) {
         rawParticles.computeOnly(dtSeconds, maxUsed);
+        if (collectMetrics) {
+          metrics.gpuDispatches++;
+          metrics.particleStepUpdates += maxUsed;
+        }
       }
 
       // Yield every 20 steps so the browser stays responsive
@@ -123,6 +191,10 @@ async function headlessPropagate(targetJD, { dtDays = 1.0 } = {}) {
     }
 
     if (!myFlag.cancelled) {
+      if (waitForGpu && rawParticles && engine?._device?.queue?.onSubmittedWorkDone) {
+        await engine._device.queue.onSubmittedWorkDone();
+      }
+
       simulationTimeJD        = targetJD;
       window.simulationTimeJD = targetJD;
       timelineSlider.value    = String(Math.floor(targetJD - baseJD));
@@ -153,6 +225,16 @@ async function headlessPropagate(targetJD, { dtDays = 1.0 } = {}) {
           if (!mesh.isEnabled()) mesh.setEnabled(true);
         }
       }
+
+      if (collectMetrics) {
+        let activeParticles = 0;
+        for (let k = 0; k < maxUsed; k++) {
+          if (expiryByIndex[k] > simSeconds) activeParticles++;
+        }
+        metrics.finalActiveParticles = activeParticles;
+        metrics.finalMaxUsed = maxUsed;
+        metrics.completed = true;
+      }
     }
   } finally {
     isHeadless = false;
@@ -160,6 +242,8 @@ async function headlessPropagate(targetJD, { dtDays = 1.0 } = {}) {
     document.body.removeChild(overlay);
     resolveRunning();
   }
+
+  return collectMetrics ? metrics : undefined;
 }
 window.headlessPropagate = headlessPropagate;
 

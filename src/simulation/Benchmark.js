@@ -10,6 +10,16 @@
     return values.reduce((a, b) => a + b, 0) / values.length;
   }
 
+  function quantile(values, q) {
+    const s = [...values].sort((a, b) => a - b);
+    if (!s.length) return NaN;
+    const x = (s.length - 1) * q;
+    const lo = Math.floor(x);
+    const hi = Math.ceil(x);
+    if (lo === hi) return s[lo];
+    return s[lo] + (s[hi] - s[lo]) * (x - lo);
+  }
+
   function wait(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
@@ -249,5 +259,318 @@
     return result;
   };
 
-  console.log("Comet benchmark helper loaded. Start the simulation, then run: runCometBenchmark()");
+  async function waitForCompletedGpuWork() {
+    const queue = engine?._device?.queue;
+    if (!queue?.onSubmittedWorkDone) {
+      throw new Error("The completed-work benchmark requires a WebGPU queue with onSubmittedWorkDone().");
+    }
+    await queue.onSubmittedWorkDone();
+  }
+
+  function completedWorkSummary(frameTimesMs) {
+    const med = median(frameTimesMs);
+    const q25 = quantile(frameTimesMs, 0.25);
+    const q75 = quantile(frameTimesMs, 0.75);
+    return {
+      medianFrameMs: med,
+      meanFrameMs: mean(frameTimesMs),
+      q25FrameMs: q25,
+      q75FrameMs: q75,
+      iqrFrameMs: q75 - q25,
+      medianCompletedFps: 1000 / med,
+      meanCompletedFps: 1000 / mean(frameTimesMs),
+    };
+  }
+
+  function setBenchmarkInput(id, value) {
+    const element = document.getElementById(id);
+    if (!element) throw new Error(`Benchmark input not found: ${id}`);
+    element.value = String(value);
+  }
+
+  function applyTailRebuildScenario(options) {
+    if (typeof window.loadComet === "function") window.loadComet(options.cometId);
+
+    setBenchmarkInput("particleLifetimeInput", options.historyDays);
+    setBenchmarkInput("particleCountInput", options.particlesPerDay);
+    setBenchmarkInput("ejectionSpeedInput", options.ejectionSpeedMps);
+    setBenchmarkInput("ejectionGammaInput", options.ejectionGamma);
+    setBenchmarkInput("ejectionKappaInput", options.ejectionKappa);
+    setBenchmarkInput("ejectionExpcosInput", options.ejectionExpcos);
+    setBenchmarkInput("activityExponentInput", options.activityExponent);
+    setBenchmarkInput("activityScaleInput", options.activityScale);
+    setBenchmarkInput("activityHalfLifeInput", options.activityHalfLifeEDays);
+    updateOrbitParameters();
+    setSimTime(options.targetJD, { resetParticles: true, focus: false });
+  }
+
+  async function waitForOneDisplayedTailFrame() {
+    await new Promise(resolve => scene.onAfterRenderObservable.addOnce(resolve));
+    await waitForCompletedGpuWork();
+  }
+
+  /**
+   * Time the real fixed-epoch tail rebuild path, including stochastic emission,
+   * WebGPU buffer writes, all compute dispatches, GPU completion, and the first
+   * completed frame that displays the rebuilt particle population.
+   */
+  window.runTailRebuildBenchmark = async function runTailRebuildBenchmark(userOptions = {}) {
+    if (!rawParticles || !(engine instanceof BABYLON.WebGPUEngine)) {
+      throw new Error("The tail-rebuild benchmark requires the WebGPU particle path.");
+    }
+    if (window.__completedWorkBenchmarkOwnsLoop) {
+      throw new Error("Run the tail-rebuild benchmark before the fixed-frame benchmark stops the normal render loop.");
+    }
+
+    const options = {
+      scenarioName: "67P_2021-09-06_appendixA_history_and_rate",
+      cometId: "67P",
+      targetJD: 2459463.5,
+      historyDays: 300,
+      particlesPerDay: 16_500,
+      dtDays: 0.1,
+      runs: 5,
+      cooldownMs: 1000,
+      renderWidth: 1920,
+      renderHeight: 1080,
+      ejectionSpeedMps: 14,
+      ejectionGamma: 0.19,
+      ejectionKappa: -0.14,
+      ejectionExpcos: 2.18,
+      activityExponent: 2.35,
+      activityScale: 1,
+      activityHalfLifeEDays: 1500,
+      ...userOptions,
+    };
+
+    for (const key of ["runs", "historyDays", "particlesPerDay", "dtDays"]) {
+      if (!Number.isFinite(options[key]) || options[key] <= 0) {
+        throw new Error(`${key} must be positive.`);
+      }
+    }
+    if (!Number.isInteger(options.runs)) throw new Error("runs must be an integer.");
+
+    engine.setSize(options.renderWidth, options.renderHeight);
+    rawParticles.resize();
+    applyTailRebuildScenario(options);
+    await waitForCompletedGpuWork();
+
+    const environment = await getEnvironment();
+    environment.pointSizePx = typeof POINT_PX !== "undefined" ? POINT_PX : null;
+    const runs = [];
+
+    for (let run = 0; run < options.runs; run++) {
+      applyTailRebuildScenario(options);
+      await waitForCompletedGpuWork();
+      const start = performance.now();
+      const rebuild = await headlessPropagate(options.targetJD, {
+        dtDays: options.dtDays,
+        collectMetrics: true,
+        waitForGpu: true,
+      });
+      await waitForOneDisplayedTailFrame();
+      const elapsedMs = performance.now() - start;
+
+      const sample = {
+        run: run + 1,
+        elapsedMs,
+        elapsedSeconds: elapsedMs / 1000,
+        ...rebuild,
+        valid: rebuild.completed && rebuild.hardCapClippedBirths === 0 && rebuild.capacityDroppedBirths === 0,
+      };
+      runs.push(sample);
+      console.log(
+        `[tail-rebuild] run ${run + 1}/${options.runs}: ${(elapsedMs / 1000).toFixed(3)} s, ` +
+        `${rebuild.finalActiveParticles} active, ${rebuild.hardCapClippedBirths} clipped, ` +
+        `${rebuild.capacityDroppedBirths} capacity-dropped`
+      );
+      if (options.cooldownMs > 0) await wait(options.cooldownMs);
+    }
+
+    const elapsedValues = runs.map(run => run.elapsedSeconds);
+    const q25 = quantile(elapsedValues, 0.25);
+    const q75 = quantile(elapsedValues, 0.75);
+    const result = {
+      benchmark: "completed fixed-epoch tail rebuild latency",
+      timingBoundary: "idle GPU before rebuild -> emission and propagation -> idle GPU -> first completed displayed tail frame",
+      scenario: options.scenarioName,
+      environment,
+      options,
+      runs,
+      summary: {
+        medianSeconds: median(elapsedValues),
+        meanSeconds: mean(elapsedValues),
+        q25Seconds: q25,
+        q75Seconds: q75,
+        iqrSeconds: q75 - q25,
+        allRunsValid: runs.every(run => run.valid),
+        medianFinalActiveParticles: median(runs.map(run => run.finalActiveParticles)),
+        medianAcceptedBirths: median(runs.map(run => run.acceptedBirths)),
+        medianParticleStepUpdates: median(runs.map(run => run.particleStepUpdates)),
+      },
+      timestamp: new Date().toISOString(),
+    };
+    console.log("[tail-rebuild] result", result);
+    return result;
+  };
+
+  async function submitCompletedWorkFrames(mode, frameCount, maxInFlightFrames, fixedDtSeconds) {
+    let submitted = 0;
+    while (submitted < frameCount) {
+      const chunk = Math.min(maxInFlightFrames, frameCount - submitted);
+
+      for (let frame = 0; frame < chunk; frame++) {
+        if (mode === "compute_only") {
+          rawParticles.computeOnly(fixedDtSeconds, maxUsed);
+          continue;
+        }
+
+        // Render the same two canvases used by the interactive application:
+        // Babylon.js first, followed by the raw WebGPU particle overlay.  The
+        // normal onAfterRender particle callback is disabled by isHeadless.
+        engine.beginFrame();
+        scene.render();
+
+        const viewProjection = new Float32Array(scene.getTransformMatrix().m);
+        const cometState = cometStateAtJD(simulationTimeJD);
+        rawParticles.update(
+          fixedDtSeconds,
+          Math.max(1, maxUsed),
+          viewProjection,
+          cometState.v_scene_per_s,
+          cometState.r_scene,
+          { baseLifetime, visMode, distVisMaxScene, vRelMax_scene }
+        );
+        engine.endFrame();
+      }
+
+      // Bound the queue depth. This prevents a long test from measuring only
+      // JavaScript command submission or accumulating thousands of unfinished
+      // frames. The timer includes every one of these completion waits.
+      await waitForCompletedGpuWork();
+      submitted += chunk;
+    }
+  }
+
+  /**
+   * Measure completed WebGPU work for a fixed number of frames.
+   *
+   * This is intentionally separate from runCometBenchmark(), whose wall-clock
+   * frame counter is useful interactively but can get ahead of asynchronous GPU
+   * execution. The Playwright runner in validation/performance calls this once
+   * per particle-count/mode pair and saves each result immediately.
+   */
+  window.runCompletedWorkBenchmark = async function runCompletedWorkBenchmark(userOptions = {}) {
+    if (!rawParticles || !(engine instanceof BABYLON.WebGPUEngine)) {
+      throw new Error("The completed-work benchmark requires the WebGPU particle path.");
+    }
+
+    const options = {
+      count: 1_000_000,
+      mode: "update_render",
+      runs: 10,
+      framesPerRun: 1000,
+      warmupFrames: 240,
+      maxInFlightFrames: 240,
+      fixedDtSeconds: 60,
+      renderWidth: 1920,
+      renderHeight: 1080,
+      cooldownMs: 250,
+      lifeSeconds: 50 * 365.25 * 86400,
+      ...userOptions,
+    };
+
+    if (!["compute_only", "update_render"].includes(options.mode)) {
+      throw new Error(`Unknown benchmark mode: ${options.mode}`);
+    }
+    for (const key of ["count", "runs", "framesPerRun", "maxInFlightFrames"]) {
+      if (!Number.isInteger(options[key]) || options[key] < 1) {
+        throw new Error(`${key} must be a positive integer.`);
+      }
+    }
+    if (!Number.isFinite(options.fixedDtSeconds) || options.fixedDtSeconds <= 0) {
+      throw new Error("fixedDtSeconds must be positive.");
+    }
+    if (options.count > rawParticles.max) {
+      throw new Error(`Requested ${options.count} particles but the GPU buffer capacity is ${rawParticles.max}.`);
+    }
+
+    // Take exclusive control of frame submission. No normal requestAnimationFrame
+    // callbacks are restarted because the automation closes this page after the
+    // benchmark. This also prevents background UI work from entering a batch.
+    if (!window.__completedWorkBenchmarkOwnsLoop) {
+      engine.stopRenderLoop();
+      isPaused = true;
+      isHeadless = true;
+      window.__completedWorkBenchmarkOwnsLoop = true;
+      await waitForCompletedGpuWork();
+    }
+
+    engine.setSize(options.renderWidth, options.renderHeight);
+    rawParticles.resize();
+    await waitForCompletedGpuWork();
+
+    const actualCount = await seedBenchmarkParticles(options.count, options);
+    const environment = await getEnvironment();
+    environment.pointSizePx = typeof POINT_PX !== "undefined" ? POINT_PX : null;
+
+    console.log(
+      `[completed-work] warm-up: mode=${options.mode}, particles=${actualCount}, frames=${options.warmupFrames}`
+    );
+    if (options.warmupFrames > 0) {
+      await submitCompletedWorkFrames(
+        options.mode,
+        options.warmupFrames,
+        options.maxInFlightFrames,
+        options.fixedDtSeconds
+      );
+    }
+
+    const runs = [];
+    for (let run = 0; run < options.runs; run++) {
+      await waitForCompletedGpuWork();
+      const start = performance.now();
+      await submitCompletedWorkFrames(
+        options.mode,
+        options.framesPerRun,
+        options.maxInFlightFrames,
+        options.fixedDtSeconds
+      );
+      const elapsedMs = performance.now() - start;
+      const frameMs = elapsedMs / options.framesPerRun;
+      const sample = {
+        run: run + 1,
+        elapsedMs,
+        completedFrames: options.framesPerRun,
+        frameMs,
+        completedFps: 1000 / frameMs,
+      };
+      runs.push(sample);
+      console.log(
+        `[completed-work] ${options.mode} ${actualCount} run ${run + 1}/${options.runs}: ` +
+        `${frameMs.toFixed(4)} ms/frame (${sample.completedFps.toFixed(2)} completed FPS)`
+      );
+      if (options.cooldownMs > 0) await wait(options.cooldownMs);
+    }
+
+    const summary = completedWorkSummary(runs.map(run => run.frameMs));
+    const result = {
+      benchmark: "fixed-frame completed WebGPU work",
+      timingBoundary: "queue idle -> fixed submissions with bounded queue depth -> queue idle",
+      mode: options.mode,
+      particles: actualCount,
+      environment,
+      options,
+      runs,
+      summary,
+      timestamp: new Date().toISOString(),
+    };
+    console.log("[completed-work] result", result);
+    return result;
+  };
+
+  console.log(
+    "Comet benchmark helpers loaded. Start the simulation, then run runCometBenchmark() " +
+    "runTailRebuildBenchmark(), or runCompletedWorkBenchmark()."
+  );
 })();

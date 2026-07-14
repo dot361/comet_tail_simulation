@@ -91,7 +91,7 @@ function createTailParticle(timeNowJD) {
       gpuWriteCursor = (gpuWriteCursor + 1) % rawParticles.max;
       tries++;
     }
-    if (tries === rawParticles.max) return;
+    if (tries === rawParticles.max) return false;
     const idx = gpuWriteCursor;
     expiryByIndex[idx] = simSeconds + lifeSeconds;
     betaByIndex[idx] = beta;
@@ -100,6 +100,7 @@ function createTailParticle(timeNowJD) {
     gpuWriteCursor = (gpuWriteCursor + 1) % rawParticles.max;
     if (idx + 1 > maxUsed) maxUsed = idx + 1;
     seedParticleAt(idx, r0_scene, v_scene, lifeSeconds, beta);
+    return true;
   } else {
     const MAX_PARTICLES = cpuSlots.length;
     if (gpuWriteCursor >= MAX_PARTICLES) gpuWriteCursor = 0;
@@ -108,7 +109,7 @@ function createTailParticle(timeNowJD) {
       gpuWriteCursor = (gpuWriteCursor + 1) % MAX_PARTICLES;
       tries++;
     }
-    if (tries === MAX_PARTICLES) return;
+    if (tries === MAX_PARTICLES) return false;
     const idx    = gpuWriteCursor;
     const r0_m   = r0_scene.scale(1 / SCALE);
     const v0_mps = v_scene.scale(1 / SCALE);
@@ -124,6 +125,7 @@ function createTailParticle(timeNowJD) {
     mesh.position.copyFrom(r0_scene);
     mesh.setEnabled(true);
     if (mesh.material) mesh.material.alpha = 0.5;
+    return true;
   }
 }
 
