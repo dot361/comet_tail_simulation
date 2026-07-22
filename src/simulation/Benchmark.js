@@ -1,3 +1,8 @@
+// ─── Reproducible interactive benchmark helper ───────────────────────────────
+// Usage after the simulation has started:
+//   runCometBenchmark()
+// Optional:
+//   runCometBenchmark({ counts: [1000000, 2000000, 3000000], runs: 3 })
 
 (function () {
   function median(values) {
@@ -95,6 +100,7 @@
   }
 
   function benchmarkParticle(i, n, lifeSeconds) {
+    // Deterministic, non-random particle cloud near 1 AU in scene units.
     const phi = Math.PI * (3 - Math.sqrt(5));
     const theta = i * phi;
     const radius = 15.0 + 0.30 * Math.sin(i * 0.013);
@@ -179,6 +185,7 @@
   async function measureFpsForCount(count, options) {
     const actualCount = await seedBenchmarkParticles(count, options);
 
+    // Keep the simulation running so WebGPU update+render and CPU fallback work are included.
     isPaused = false;
     isHeadless = false;
     simulationSpeed = options.simulationSpeed;
@@ -225,7 +232,7 @@
 
     const options = {
       counts: defaultCounts.filter(c => c <= capacity),
-      runs: 3,
+      runs: 5,
       warmupSeconds: 5,
       measureSeconds: 20,
       simulationSpeed: 3600,
@@ -252,8 +259,9 @@
 
     const result = { mode, environment, options, results };
     const timestamp = new Date().toISOString().replaceAll(":", "-").replaceAll(".", "-");
-    downloadText(`comet_benchmark_json.json`, JSON.stringify(result, null, 2), "application/json");
-    downloadText(`comet_benchmark_csv.csv`, toCsv(result), "text/csv");
+    const safeMode = mode.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+    downloadText(`benchmark_results_${safeMode}_${timestamp}.json`, JSON.stringify(result, null, 2), "application/json");
+    downloadText(`benchmark_results_${safeMode}_${timestamp}.csv`, toCsv(result), "text/csv");
 
     console.log("Benchmark complete:", result);
     return result;

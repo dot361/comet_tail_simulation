@@ -1,0 +1,22 @@
+{
+  "manualCleanupEnabled": true,
+  "manualCleanupCoordinateSystem": "arcsec",
+
+  "manualCleanupEraseCircles": [
+    { "center": [75, 55], "radius": 18 }
+  ],
+
+  "manualCleanupEraseRectangles": [],
+
+  "manualCleanupErasePolygons": [
+    [[-130, -220], [-95, -220], [-55, -110], [-52, -55], [-84, -85], [-125, -165]],
+    [[-85, 40], [-15, 115], [95, 115], [95, 35], [55, 30], [20, 65], [-35, 45]]
+  ],
+
+  "manualCleanupKeepCircles": [],
+  "manualCleanupKeepRectangles": [],
+  "manualCleanupKeepPolygons": [],
+
+  "manualCleanupApplyToSourceMask": true,
+  "manualCleanupDiagnostic": true
+}

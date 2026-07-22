@@ -1,0 +1,2 @@
+particles,webgpu_median_fps,cpu_median_fps,webgpu_frame_ms,cpu_frame_ms,frame_time_speedup,fps_speedup
+5000,1863.606819659017,14.680122616346056,0.536593872404357,68.11932203389894,126.9476330929228,126.9476330929228

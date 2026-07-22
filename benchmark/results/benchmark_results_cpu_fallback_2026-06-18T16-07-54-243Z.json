@@ -1,0 +1,47 @@
+{
+  "mode": "CPU fallback",
+  "environment": {
+    "mode": "CPU fallback",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "cpuLogicalThreads": 20,
+    "babylonVersion": "9.13.0",
+    "renderWidth": 2005,
+    "renderHeight": 1305,
+    "monitorWidth": 2005,
+    "monitorHeight": 1305,
+    "devicePixelRatio": 1,
+    "webgpuComputeEnabled": false,
+    "rawParticlesMax": null,
+    "maxParticlesGpuConstant": 1000000,
+    "maxParticlesCpuConstant": 5000,
+    "webgpuAdapterInfo": {},
+    "timestamp": "2026-06-18T16:06:05.718Z"
+  },
+  "options": {
+    "counts": [
+      5000
+    ],
+    "runs": 5,
+    "warmupSeconds": 5,
+    "measureSeconds": 20,
+    "simulationSpeed": 3600,
+    "lifeSeconds": 1577880000
+  },
+  "results": [
+    {
+      "particles": 5000,
+      "requestedParticles": 5000,
+      "runs": [
+        14.805246422893482,
+        14.680122616346056,
+        14.571221836872176,
+        14.7351911329117,
+        14.6693916926493
+      ],
+      "medianFps": 14.680122616346056,
+      "meanFps": 14.692234740334545,
+      "frameMs": 68.11932203389894,
+      "note": "below refresh limit"
+    }
+  ]
+}
