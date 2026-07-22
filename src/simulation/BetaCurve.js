@@ -281,6 +281,7 @@ window.setBetaCurveSizePower = setBetaCurveSizePower;
     ];
     recomputeDomain();
     drawBetaCurve();
+    rebuildBetaTables();
   });
 
   rebuildBetaTables();
