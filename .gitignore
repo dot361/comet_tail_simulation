@@ -17,9 +17,13 @@ validation/density/results_*/*.npy
 validation/density/results_*/*.npz
 validation/density/results_*/*.fits
 
+#Comparison dataset from telescope observations
+telescope_data/
+
 # Generated performance runs (copy final publication data into the article or
 # a deliberately tracked validation artifact after reviewing it).
 validation/performance/results/
 *.log
 *.md
+!/README.md
 *.json
