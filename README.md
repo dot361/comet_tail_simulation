@@ -1,6 +1,6 @@
 # Comet Simulator
 
-This repository contains the supplementary software for *A Browser Based Three Dimensional Simulator for Comet Dust Tail Modeling*. It includes the interactive simulator and the scripts used to validate its orbit propagation, telescope-image morphology, three-dimensional dust density and WebGPU performance. Manuscript sources, raw observations and large generated runs are not part of the application source, but may be acquired by contacting the authors.
+This repository contains the supplementary software for *A Browser Based Three Dimensional Simulator for Comet Dust Tail Modeling*. It includes the interactive simulator and its integrated data-export tools. Manuscript sources, standalone validation scripts, raw observations and large generated runs are not part of the application source, but may be acquired by contacting the authors.
 
 The simulator is a browser application built with Babylon.js. It uses WebGPU compute for large particle populations when available and falls back to a smaller CPU/WebGL particle system on other devices.
 
@@ -33,7 +33,6 @@ This is an intentionally simplified physical model. Planetary perturbations, non
 
 - `index.html`, `css/` and `src/` contain the browser application.
 - `src/data/comets.js` contains the comet presets.
-- `validation/` contains the article validation and benchmark scripts.
 - `external/` contains comparison and viewing helpers.
 
 To add a comet, add its orbital solution and display metadata to `src/data/comets.js`, then add a matching button or call `loadComet()` with its identifier.

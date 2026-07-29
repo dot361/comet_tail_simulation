@@ -9,20 +9,12 @@ __pycache__/
 # Local manuscript workspace
 /article/
 
-# Validation density: large regenerable binaries (rebuild via the scripts in
-# validation/density/). Keep the small meta/JSON/figures + the report committed.
-validation/density/_gpu_downloads/
-validation/density/_browser_downloads/
-validation/density/results_*/*.npy
-validation/density/results_*/*.npz
-validation/density/results_*/*.fits
+# Local validation workspace and generated results
+/validation/
 
 #Comparison dataset from telescope observations
 telescope_data/
 
-# Generated performance runs (copy final publication data into the article or
-# a deliberately tracked validation artifact after reviewing it).
-validation/performance/results/
 *.log
 *.md
 !/README.md
