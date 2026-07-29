@@ -541,17 +541,33 @@
 
   <div id="mobileSpeedBar">
     <label for="velocitySliderMobile">
-      Speed: <span id="velocityValueMobile">1</span>
+      Speed: <span id="velocityValueMobile">1</span>×
     </label>
-    <input type="range" id="velocitySliderMobile" min="0" max="100" value="0" step="1">
+    <input type="range" id="velocitySliderMobile" min="0" max="93" value="0" step="1">
   </div>
 
   <div id="timelineWrapper">
-    <div id="topRow">
-      <div id="timelineLabel">Date: 2000-01-01</div>
+    <div id="topRow" style="position:relative;justify-content:center;min-height:27px;">
+      <div id="timelineLabel" style="position:absolute;left:10px;">Date: 2000-01-01</div>
+      <div id="diagnosticsBar" style="
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        max-width: calc(100% - 220px);
+        font-family: monospace, sans-serif;
+        pointer-events: none;
+      ">
+        <div id="actBoxQ" style="font-size:14px;color:#fff;background:rgba(0,0,0,0.72);padding:4px 8px;border-radius:4px;border:1px solid #fff;white-space:nowrap;">Q: --</div>
+        <div id="actBoxDecay" style="font-size:14px;color:#fff;background:rgba(0,0,0,0.72);padding:4px 8px;border-radius:4px;border:1px solid #fff;white-space:nowrap;">decay: --</div>
+        <div id="particleCounter" style="font-size:14px;color:#fff;background:rgba(0,0,0,0.72);padding:4px 8px;border-radius:4px;border:1px solid #fff;white-space:nowrap;">Particles: --</div>
+        <div id="fpsCounter" style="font-size:14px;color:#fff;background:rgba(0,0,0,0.72);padding:4px 8px;border-radius:4px;border:1px solid #fff;white-space:nowrap;">FPS: --</div>
+      </div>
     </div>
     <input type="range" id="timelineSlider" min="-36525" max="36525" value="0" step="1" disabled />
   </div>
+
+  <div id="simulationStatusAnnouncer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
 
   <div id="uiOverlay">
 
@@ -777,10 +793,6 @@
     <details class="ui-group">
       <summary>View</summary>
       <div class="group-content">
-        <div id="speedControl">
-          <label for="velocitySlider">Simulation speed: <span id="velocityValue">1</span>×</label>
-          <input type="range" id="velocitySlider" min="0" max="93" value="0" step="1">
-        </div>
         <div class="view-axis-buttons" aria-label="Camera axis views">
           <button id="viewXBtn" type="button">X View</button>
           <button id="viewYBtn" type="button">Y View</button>
@@ -805,7 +817,7 @@
     z-index: 1001;
     font-family: sans-serif;
   ">
-    <div id="gpuStatus" style="
+    <div id="gpuStatus" role="status" aria-live="polite" aria-atomic="true" style="
       font-size:12px;
       padding:4px 6px;
       border-radius:4px;
@@ -819,13 +831,25 @@
 
   <div id="pauseContainer" style="
     position: fixed;
-    top: 110px;
+    top: 55px;
     right: 25px;
     z-index: 1000;
-    padding: 10px 20px;
+    width: 210px;
+    padding: 10px 12px;
     border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.16);
+    background: rgba(0,0,0,0.58);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
     font-family: sans-serif;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
   ">
+    <div id="speedControl" style="color:#eee;font-size:12px;">
+      <label for="velocitySlider" style="display:block;margin-bottom:4px;">Simulation speed: <span id="velocityValue">1</span>×</label>
+      <input type="range" id="velocitySlider" min="0" max="93" value="0" step="1" style="width:100%;margin:0;">
+    </div>
     <button id="pauseBtn" style="
       background: none;
       border: 1.5px solid #ccc;
@@ -834,9 +858,10 @@
       font-size: 16px;
       border-radius: 5px;
       cursor: pointer;
+      margin-top: 0;
       transition: background-color 0.3s ease, color 0.3s ease;
     ">Pause</button>
-    <label style="display:flex;align-items:center;gap:6px;margin-top:8px;cursor:pointer;user-select:none;color:#ccc;font-size:12px;">
+    <label style="display:flex;align-items:center;gap:6px;margin-top:0;cursor:pointer;user-select:none;color:#ccc;font-size:12px;">
       <input type="checkbox" id="autoPrefillToggle" />
       Recompute particles on change
     </label>
@@ -896,70 +921,6 @@
     " onclick="loadComet('3I')">3I/ATLAS</button>
   </div>
 
-  <div id="actBoxQ" style="
-    position: fixed;
-    bottom: 190px;
-    right: 20px;
-    z-index: 1002;
-    font-family: monospace, sans-serif;
-    font-size: 14px;
-    color: #fff;
-    background: rgba(0,0,0,0.6);
-    padding: 4px 8px;
-    border-radius: 4px;
-    border: 1px solid #fff;
-    display: inline-block;
-    white-space: nowrap;
-  ">Q: --</div>
-
-  <div id="actBoxDecay" style="
-    position: fixed;
-    bottom: 150px;
-    right: 20px;
-    z-index: 1002;
-    font-family: monospace, sans-serif;
-    font-size: 14px;
-    color: #fff;
-    background: rgba(0,0,0,0.6);
-    padding: 4px 8px;
-    border-radius: 4px;
-    border: 1px solid #fff;
-    display: inline-block;
-    white-space: nowrap;
-  ">decay: --</div>
-
-  <div id="particleCounter" style="
-    position: fixed;
-    bottom: 110px;
-    right: 20px;
-    z-index: 1001;
-    font-family: monospace, sans-serif;
-    font-size: 14px;
-    color: #fff;
-    background: rgba(0,0,0,0.6);
-    padding: 4px 8px;
-    border-radius: 4px;
-    border: 1px solid #fff;
-  ">
-    Particles: --
-  </div>
-
-  <div id="fpsCounter" style="
-    position: fixed;
-    bottom: 70px;
-    right: 20px;
-    z-index: 1001;
-    font-family: monospace, sans-serif;
-    font-size: 14px;
-    color: #fff;
-    background: rgba(0,0,0,0.6);
-    padding: 4px 8px;
-    border-radius: 4px;
-    border: 1px solid #fff;
-  ">
-    FPS: --
-  </div>
-
   <div id="betaCurvePanel" style="
     position: fixed;
     right: 20px;
@@ -983,21 +944,23 @@
       <div style="font-size:16px; font-weight:600; letter-spacing:0.2px; opacity:.9;">
         β Gradation Curve
       </div>
-      <div style="display:flex; gap:6px; align-items:center;"></div>
+      <button id="betaCurveToggle" type="button" aria-expanded="true" aria-controls="betaCurveBody" aria-label="Collapse β gradation curve" title="Collapse β gradation curve" style="width:28px;height:28px;margin:0;padding:0;line-height:1;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.28);">−</button>
     </div>
 
-    <div style="position:relative;">
-      <canvas id="betaCurveCanvas"
-        width="340" height="260"
-        style="width:340px;height:260px; background:#0a1016; border-radius:10px; border:1px solid rgba(218, 218, 218, 0.5);">
-      </canvas>
+    <div id="betaCurveBody">
+      <div style="position:relative;">
+        <canvas id="betaCurveCanvas"
+          width="340" height="260"
+          style="width:340px;height:260px; background:#0a1016; border-radius:10px; border:1px solid rgba(218, 218, 218, 0.5);">
+        </canvas>
 
-      <div id="betaCurveTip" style="
-        position:absolute; pointer-events:none; transform:translate(-50%,-120%);
-        background: rgba(12,18,26,0.9); color:#dff3ff; font-size:11px;
-        padding: 4px 6px; border-radius:6px; border:1px solid rgba(130,160,190,0.4);
-        box-shadow: 0 2px 10px rgba(0,0,0,0.4); display:none;">
-        β: 0.00 • w: 0.00
+        <div id="betaCurveTip" style="
+          position:absolute; pointer-events:none; transform:translate(-50%,-120%);
+          background: rgba(12,18,26,0.9); color:#dff3ff; font-size:11px;
+          padding: 4px 6px; border-radius:6px; border:1px solid rgba(130,160,190,0.4);
+          box-shadow: 0 2px 10px rgba(0,0,0,0.4); display:none;">
+          β: 0.00 • w: 0.00
+        </div>
       </div>
     </div>
   </div>
@@ -1094,15 +1057,11 @@
       const timelineWrapper = document.getElementById("timelineWrapper");
 
       const velocitySlider = document.getElementById("velocitySlider");
-      const velocityValue = document.getElementById("velocityValue");
       const velocitySliderMobile = document.getElementById("velocitySliderMobile");
-      const velocityValueMobile = document.getElementById("velocityValueMobile");
 
       function syncSpeedUI(value) {
         if (velocitySlider) velocitySlider.value = value;
         if (velocitySliderMobile) velocitySliderMobile.value = value;
-        if (velocityValue) velocityValue.textContent = value;
-        if (velocityValueMobile) velocityValueMobile.textContent = value;
       }
 
       if (velocitySlider && velocitySliderMobile) {

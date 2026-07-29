@@ -272,6 +272,17 @@ window.setBetaCurveSizePower = setBetaCurveSizePower;
   window.addEventListener('pointermove', onMove);
   window.addEventListener('pointerup',   onUp);
 
+  const toggleBtn = document.getElementById('betaCurveToggle');
+  const curveBody = document.getElementById('betaCurveBody');
+  toggleBtn?.addEventListener('click', () => {
+    const collapsed = toggleBtn.getAttribute('aria-expanded') === 'true';
+    toggleBtn.setAttribute('aria-expanded', String(!collapsed));
+    toggleBtn.setAttribute('aria-label', collapsed ? 'Expand β gradation curve' : 'Collapse β gradation curve');
+    toggleBtn.title = collapsed ? 'Expand β gradation curve' : 'Collapse β gradation curve';
+    toggleBtn.textContent = collapsed ? '+' : '−';
+    if (curveBody) curveBody.hidden = collapsed;
+  });
+
   betaUI.resetBtn?.addEventListener('click', () => {
     betaUI.pts = [
       { x: 0.00, y: 0.70 },

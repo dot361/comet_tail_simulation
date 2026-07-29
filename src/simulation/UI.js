@@ -17,9 +17,15 @@ function initUI() {
 
   const velocitySlider     = document.getElementById("velocitySlider");
   const velocityValueLabel = document.getElementById("velocityValue");
+  const velocitySliderMobile = document.getElementById("velocitySliderMobile");
+  const velocityValueMobile = document.getElementById("velocityValueMobile");
   velocitySlider.addEventListener("input", () => {
     simulationSpeed = 0.8 * Math.pow(2, parseInt(velocitySlider.value) / 4);
-    velocityValueLabel.textContent = simulationSpeed.toFixed(2) + "×";
+    const displaySpeed = simulationSpeed.toFixed(2);
+    velocityValueLabel.textContent = displaySpeed;
+    if (velocityValueMobile) velocityValueMobile.textContent = displaySpeed;
+    velocitySlider.setAttribute("aria-valuetext", `${displaySpeed} times`);
+    velocitySliderMobile?.setAttribute("aria-valuetext", `${displaySpeed} times`);
   });
 
   visModeSelect?.addEventListener("change", () => { visMode = visModeSelect.value; });

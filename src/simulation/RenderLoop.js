@@ -1,6 +1,8 @@
 // ─── Render loop ─────────────────────────────────────────────────────────────
 
 function startRenderLoop() {
+  const statusAnnouncer = document.getElementById("simulationStatusAnnouncer");
+  let accessibilityStatusAccum = 0;
 
   if (rawParticles) {
     scene.onAfterRenderObservable.add(() => {
@@ -72,6 +74,17 @@ function startRenderLoop() {
       const boxDecay = document.getElementById("actBoxDecay");
       if (boxQ)     boxQ.textContent     = `Q: ${Q.toFixed(3)}`;
       if (boxDecay) boxDecay.textContent = `decay: ${(ageFactor * 100).toFixed(1)}%`;
+
+      accessibilityStatusAccum += engine.getDeltaTime() / 1000;
+      if (statusAnnouncer && accessibilityStatusAccum >= 5) {
+        statusAnnouncer.textContent = [
+          boxQ?.textContent,
+          boxDecay?.textContent,
+          particleCounter?.textContent,
+          fpsCounter?.textContent
+        ].filter(Boolean).join("; ");
+        accessibilityStatusAccum = 0;
+      }
 
       window.emitCarry = (typeof window.emitCarry !== "undefined") ? window.emitCarry : 0;
       window.emitCarry += targetThisFrame;
