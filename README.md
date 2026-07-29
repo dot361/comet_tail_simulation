@@ -14,7 +14,7 @@ python -m http.server 8000
 
 Open `http://localhost:8000` in a WebGPU support browser version. An internet connection is required to load Babylon.js from its CDN. The status badge shows whether WebGPU compute or the CPU fallback is active.
 
-Useful URL options are `?force=webgl`, `?force=cpu`, and `?maxParticles=2000000`. 
+Useful URL options are `?force=webgl`, `?force=cpu`, and `?maxParticles=2000000`.
 
 Choose a comet preset or enter orbital elements manually, then use the timeline to move through Julian dates. Dust production is controlled by the activity law, particle lifetime, emission rate and ejection model. The ejection speed depends on grain β and heliocentric distance, while the β curve controls the sampled grain distribution. Particles can be coloured by β, age, distance from the nucleus or velocity relative to the comet.
 
