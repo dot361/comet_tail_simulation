@@ -72,10 +72,10 @@ function generateSynchronesAtEpoch({ observationJD, emissionOffsetsDays, betaVal
     const v0_mps = csEmit.v_scene_per_s.scale(1 / SCALE);
     const pts = [];
     for (const beta of betaValues) {
-      const muEff = GMsun * Math.max(0, 1 - beta);
+      const muEff = GMsun * (1 - beta);
       const dtSec = (observationJD - emissionJD) * SECONDS_PER_DAY;
       let r_m;
-      if (muEff <= 0 || dtSec === 0) { r_m = r0_m.add(v0_mps.scale(dtSec)); }
+      if (muEff === 0 || dtSec === 0) { r_m = r0_m.add(v0_mps.scale(dtSec)); }
       else                           { r_m = keplerUniversalPropagate(r0_m, v0_mps, dtSec, muEff).r; }
       pts.push(r_m.scale(SCALE));
     }
@@ -95,10 +95,10 @@ function generateSyndynesAtEpoch({ observationJD, emissionOffsetsDays, betaValue
       if (!csEmit) continue;
       const r0_m   = csEmit.r_scene.scale(1 / SCALE);
       const v0_mps = csEmit.v_scene_per_s.scale(1 / SCALE);
-      const muEff = GMsun * Math.max(0, 1 - beta);
+      const muEff = GMsun * (1 - beta);
       const dtSec = (observationJD - emissionJD) * SECONDS_PER_DAY;
       let r_m;
-      if (muEff <= 0 || dtSec === 0) { r_m = r0_m.add(v0_mps.scale(dtSec)); }
+      if (muEff === 0 || dtSec === 0) { r_m = r0_m.add(v0_mps.scale(dtSec)); }
       else                           { r_m = keplerUniversalPropagate(r0_m, v0_mps, dtSec, muEff).r; }
       pts.push(r_m.scale(SCALE));
     }

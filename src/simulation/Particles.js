@@ -54,7 +54,7 @@ function seedParticleAt(index, r_scene, v_scene_per_s, lifeSeconds, beta) {
 
 function generateBeta(min, max, skew) {
   if (betaUI && betaUI.enabled) {
-    return Math.min(1, Math.max(0, sampleBetaFromCurve(Math.random())));
+    return Math.max(0, sampleBetaFromCurve(Math.random())) * ((betaUI && betaUI.betaScale) || 1);
   }
   if (min === max) return min;
   let u = Math.random();
@@ -113,7 +113,7 @@ function createTailParticle(timeNowJD) {
     const idx    = gpuWriteCursor;
     const r0_m   = r0_scene.scale(1 / SCALE);
     const v0_mps = v_scene.scale(1 / SCALE);
-    const mu_p   = GMsun * Math.max(1 - beta, 0);
+    const mu_p   = GMsun * (1 - beta);
     cpuSlots[idx] = { t0JD: timeNowJD, r0_m, v0_mps, mu: mu_p, lifeSeconds, beta };
     expiryByIndex[idx] = simSeconds + lifeSeconds;
     betaByIndex[idx] = beta;

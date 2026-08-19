@@ -54,6 +54,7 @@ const betaUI = {
   pdf:        new Float32Array(512),
   cdf:        new Float32Array(512),
   enabled:    true,
+  betaScale:  1,
   pad:        { l: 44, r: 14, t: 16, b: 36 },
   dpr:        Math.max(1, Math.min(2.5, window.devicePixelRatio || 1)),
 };
@@ -103,7 +104,9 @@ function drawBetaCurve() {
   ctx.fillStyle = 'rgba(255,255,255,0.6)';
   ctx.font = '11px sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-  for (let t = 0; t <= nTicks; t++) ctx.fillText((t/nTicks).toFixed(1), cx(t/nTicks), H - 12);
+  const _bScale = (betaUI.betaScale || 1);
+  const _fmt = (v) => (_bScale >= 10 ? v.toFixed(0) : v.toFixed(1));
+  for (let t = 0; t <= nTicks; t++) ctx.fillText(_fmt((t/nTicks) * _bScale), cx(t/nTicks), H - 12);
   ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
   for (let t = 0; t <= nTicks; t++) ctx.fillText((t/nTicks).toFixed(1), 30, cy(t/nTicks));
   ctx.restore();
@@ -140,6 +143,20 @@ function drawBetaCurve() {
 
 // ─── Pointer interaction ──────────────────────────────────────────────────────
 
+function _betaShowTip(i, clientX, clientY) {
+  const tip = betaUI.tipEl;
+  if (!tip) return;
+  if (i < 0) { tip.style.display = 'none'; return; }
+  const p = betaUI.pts[i];
+  const beta = (p.x * (betaUI.betaScale || 1));
+  const betaStr = beta >= 10 ? beta.toFixed(2) : beta.toFixed(3);
+  tip.innerHTML = '\u03b2: ' + betaStr + '<br>intensity: ' + p.y.toFixed(2);
+  tip.style.display = 'block';
+  const host = betaUI.canvas.getBoundingClientRect();
+  tip.style.left = (clientX - host.left + 12) + 'px';
+  tip.style.top  = (clientY - host.top  - 8)  + 'px';
+}
+
 function hitTest(px, py) {
   for (let i = 0; i < betaUI.pts.length; i++) {
     const p  = betaUI.pts[i];
@@ -153,12 +170,18 @@ function hitTest(px, py) {
 function onDown(e) {
   const rect = betaUI.canvas.getBoundingClientRect();
   betaUI.dragging = hitTest(e.clientX - rect.left, e.clientY - rect.top);
-  if (betaUI.dragging >= 0) e.preventDefault();
+  if (betaUI.dragging >= 0) { e.preventDefault(); _betaShowTip(betaUI.dragging, e.clientX, e.clientY); }
 }
 
 function onMove(e) {
-  if (betaUI.dragging < 0) return;
   const rect = betaUI.canvas.getBoundingClientRect();
+  if (betaUI.dragging < 0) {
+    // hover: show the readout when over a point, update the cursor
+    const hi = hitTest(e.clientX - rect.left, e.clientY - rect.top);
+    _betaShowTip(hi, e.clientX, e.clientY);
+    if (betaUI.canvas) betaUI.canvas.style.cursor = (hi >= 0) ? 'grab' : 'default';
+    return;
+  }
   const x = ix(e.clientX - rect.left);
   const y = iy(e.clientY - rect.top);
   const i = betaUI.dragging;
@@ -169,10 +192,12 @@ function onMove(e) {
   recomputeDomain();
   drawBetaCurve();
   rebuildBetaTables();
+  _betaShowTip(i, e.clientX, e.clientY);
 }
 
 function onUp() {
   if (betaUI.dragging >= 0) { betaUI.dragging = -1; rebuildBetaTables(); }
+  if (betaUI.tipEl) betaUI.tipEl.style.display = 'none';
 }
 
 // ─── PDF / CDF tables ────────────────────────────────────────────────────────
@@ -269,6 +294,7 @@ window.setBetaCurveSizePower = setBetaCurveSizePower;
   drawBetaCurve();
 
   betaUI.canvas.addEventListener('pointerdown', onDown);
+  betaUI.canvas.addEventListener('pointerleave', () => { if (betaUI.tipEl) betaUI.tipEl.style.display = 'none'; });
   window.addEventListener('pointermove', onMove);
   window.addEventListener('pointerup',   onUp);
 
@@ -282,6 +308,27 @@ window.setBetaCurveSizePower = setBetaCurveSizePower;
     toggleBtn.textContent = collapsed ? '+' : '−';
     if (curveBody) curveBody.hidden = collapsed;
   });
+
+  (function addBetaScaleInput() {
+    const host = betaUI.resetBtn?.parentElement || betaUI.canvas?.parentElement;
+    if (!host || document.getElementById('betaScaleInput')) return;
+    const wrap = document.createElement('label');
+    wrap.style.cssText = 'display:inline-flex;align-items:center;gap:4px;margin-left:8px;font-size:12px;opacity:0.9;';
+    wrap.title = 'Maximum beta of the curve. Values above 1 emit repulsive grains (beta > 1).';
+    wrap.append('\u03b2 max');
+    const inp = document.createElement('input');
+    inp.type = 'number'; inp.id = 'betaScaleInput';
+    inp.min = '0.05'; inp.max = '50'; inp.step = '0.05'; inp.value = String(betaUI.betaScale);
+    inp.style.cssText = 'width:64px;';
+    inp.addEventListener('change', () => {
+      const v = parseFloat(inp.value);
+      betaUI.betaScale = (Number.isFinite(v) && v > 0) ? v : 1;
+      inp.value = String(betaUI.betaScale);
+      drawBetaCurve();
+    });
+    wrap.appendChild(inp);
+    host.appendChild(wrap);
+  })();
 
   betaUI.resetBtn?.addEventListener('click', () => {
     betaUI.pts = [

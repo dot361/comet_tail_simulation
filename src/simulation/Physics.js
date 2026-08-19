@@ -169,8 +169,35 @@ function _keplerUniversalStep(r0, v0, dt, mu) {
 const KEPLER_Z_SAFE = 50;
 const KEPLER_MAX_SUBSTEPS = 64;
 
+function _repulsivePropagate(r0, v0, dt, mu) {
+  const accel = (r) => {
+    const rn = Math.max(1e-6, r.length());
+    return r.scale(-mu / (rn * rn * rn));
+  };
+  const rmag = Math.max(1e-6, r0.length());
+  const tDyn = Math.sqrt((rmag * rmag * rmag) / Math.abs(mu));
+  let n = Math.ceil(Math.abs(dt) / (0.02 * tDyn));
+  n = Math.min(200000, Math.max(1, n));
+  const h = dt / n;
+  let r = r0.clone(), v = v0.clone();
+  for (let s = 0; s < n; s++) {
+    const k1v = accel(r);                        const k1r = v;
+    const k2v = accel(r.add(k1r.scale(0.5 * h))); const k2r = v.add(k1v.scale(0.5 * h));
+    const k3v = accel(r.add(k2r.scale(0.5 * h))); const k3r = v.add(k2v.scale(0.5 * h));
+    const k4v = accel(r.add(k3r.scale(h)));       const k4r = v.add(k3v.scale(h));
+    r = r.add(k1r.add(k2r.scale(2)).add(k3r.scale(2)).add(k4r).scale(h / 6));
+    v = v.add(k1v.add(k2v.scale(2)).add(k3v.scale(2)).add(k4v).scale(h / 6));
+  }
+  if (![r.x, r.y, r.z, v.x, v.y, v.z].every(Number.isFinite)) {
+    return { r: r0.add(v0.scale(dt)), v: v0.clone() };
+  }
+  return { r, v };
+}
+
 function keplerUniversalPropagate(r0, v0, dt, mu) {
   if (!isFinite(dt) || dt === 0) return { r: r0.clone(), v: v0.clone() };
+  if (mu < 0)   return _repulsivePropagate(r0, v0, dt, mu);
+  if (mu === 0) return { r: r0.add(v0.scale(dt)), v: v0.clone() };
 
   const r0mag = Math.max(1e-12, r0.length());
   const v0mag = v0.length();

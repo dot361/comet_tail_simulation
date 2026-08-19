@@ -44,7 +44,7 @@ fn accel(r: vec3<f32>, muScene: f32, beta: f32) -> vec3<f32> {
   let r2    = max(1e-18, dot(r, r));
   let invR  = inverseSqrt(r2);
   let invR3 = invR * invR * invR;
-  let muEff = muScene * max(0.0, 1.0 - clamp(beta, 0.0, 1.0));
+  let muEff = muScene * (1.0 - beta);
   return -muEff * r * invR3;
 }
 
@@ -69,7 +69,7 @@ fn main(@builtin(global_invocation_id) gid : vec3<u32>) {
   }
 
   let rmag  = max(1e-6, length(r));
-  let muEst = sim.muScene * max(1e-6, 1.0 - clamp(b, 0.0, 1.0));
+  let muEst = sim.muScene * max(1e-6, abs(1.0 - b));
   let tDyn  = sqrt((rmag * rmag * rmag) / muEst);
   var steps = i32(ceil(dt / (0.1 * tDyn)));
   steps = clamp(steps, 1, 8);

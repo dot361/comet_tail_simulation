@@ -141,6 +141,11 @@ function contourBuildBetaSampler(options = {}) {
     ? 'cross_section_importance'
     : 'number';
   const betaFloor = contourNumber(options.betaFloor, 1e-4, 1e-8, 1);
+  const curveMaxX = explicitPoints && explicitPoints.length
+    ? Math.max(...explicitPoints.map((p) => Number(p.x) || 0))
+    : 1;
+  const betaCeil = Math.max(betaFloor + 1e-9,
+    contourNumber(options.betaMax, Math.max(1e-9, curveMaxX), 1e-8, 100));
   const tableSize = Math.floor(contourNumber(options.tableSize, 16384, 256, 65536));
   const xs = new Float64Array(tableSize);
   const numberPdf = new Float64Array(tableSize);
@@ -161,7 +166,7 @@ function contourBuildBetaSampler(options = {}) {
   let crossSectionSum = 0;
   let proposalSum = 0;
   for (let i = 0; i < tableSize; i++) {
-    const beta = betaFloor + (1 - betaFloor) * i / (tableSize - 1);
+    const beta = betaFloor + (betaCeil - betaFloor) * i / (tableSize - 1);
     const nPdf = numberPdfAt(beta);
     const radiusM = contourRadiusMetersFromBeta(beta, densityKgM3, qpr);
     const areaM2 = Math.PI * radiusM * radiusM;
@@ -199,7 +204,7 @@ function contourBuildBetaSampler(options = {}) {
     const t = c1 > c0 ? (u - c0) / (c1 - c0) : 0;
     const x0 = i === 0 ? xs[0] : xs[i - 1];
     const x1 = xs[i];
-    return Math.min(1, Math.max(betaFloor, x0 + t * (x1 - x0)));
+    return Math.min(betaCeil, Math.max(betaFloor, x0 + t * (x1 - x0)));
   };
 
   const brightnessWeightForBeta = (beta) => {
@@ -382,9 +387,9 @@ async function bakeAndExportTelescopeContourData(options = {}) {
         const dt = (observationJD - birthJD) * SECONDS_PER_DAY;
         const r0m = r0Scene.scale(1 / SCALE);
         const v0mps = vScene.scale(1 / SCALE);
-        const mu = GMsun * Math.max(1 - beta, 0);
+        const mu = GMsun * (1 - beta);
         let rm;
-        if (mu <= 0) rm = r0m.add(v0mps.scale(dt));
+        if (mu === 0) rm = r0m.add(v0mps.scale(dt));
         else rm = keplerUniversalPropagate(r0m, v0mps, dt, mu).r;
         const posScene = rm.scale(SCALE);
         const rd = heliocentricSceneToRaDec(posScene, observerScene);
