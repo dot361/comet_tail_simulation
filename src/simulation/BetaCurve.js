@@ -268,7 +268,7 @@ function sampleBetaFromCurve(u) {
 // bound-grain range.
 function setBetaCurveSizePower(sizePower, betaMax = 1) {
   const e    = -sizePower - 2;                          // beta-PDF exponent; e=1.9 for sizePower=-3.9
-  const xmax = Math.max(0.05, Math.min(1, betaMax));    // cutoff = beta(rmin), clamped to the sim's beta<=1
+  const xmax = Math.max(0.05, Math.min(50, betaMax));
   const NP   = 9;
   // Points span [0, xmax] so the curve's DOMAIN enforces the upper cutoff: the
   // PDF/CDF machinery returns 0 outside the point range, so no beta > xmax is

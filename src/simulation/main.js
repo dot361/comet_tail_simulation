@@ -216,7 +216,7 @@ async function headlessPropagate(targetJD, {
           let rScene;
           if (dt <= 0) {
             rScene = slot.r0_m.scale(SCALE);
-          } else if (slot.mu <= 0) {
+          } else if (slot.mu === 0) {
             rScene = slot.r0_m.add(slot.v0_mps.scale(dt)).scale(SCALE);
           } else {
             rScene = keplerUniversalPropagate(slot.r0_m, slot.v0_mps, dt, slot.mu).r.scale(SCALE);

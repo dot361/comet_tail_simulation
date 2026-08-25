@@ -115,7 +115,7 @@ function startRenderLoop() {
           if (dt <= 0) {
             rScene = slot.r0_m.scale(SCALE);
             v_mps  = slot.v0_mps;
-          } else if (slot.mu <= 0) {
+          } else if (slot.mu === 0) {
             rScene = slot.r0_m.add(slot.v0_mps.scale(dt)).scale(SCALE);
             v_mps  = slot.v0_mps;
           } else {
